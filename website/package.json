@@ -1,0 +1,19 @@
+{
+  "name": "website",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "watch": "vite --port 8080 --no-clearScreen",
+    "build": "vite build && tsc --preserveWatchOutput",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "preact": "^10.13.1"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.5.0",
+    "typescript": "^5.0.2",
+    "vite": "^4.3.2"
+  }
+}
