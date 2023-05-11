@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "repository": {
+    "url": "https://github.com/krisnye/voxel"
+  },
   "scripts": {
     "watch": "vite --port 8080 --no-clearScreen",
     "build": "vite build && tsc --preserveWatchOutput",
