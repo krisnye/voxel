@@ -1,7 +1,5 @@
-import { useState } from 'preact/hooks'
-import preactLogo from '../assets/preact.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from "preact/hooks"
+import "./App.css"
 
 export function App() {
   const [count, setCount] = useState(0)
