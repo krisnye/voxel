@@ -21,8 +21,8 @@ export type StructInstance<SD extends StructDefinition> = StructValues<SD> & {
 export class Struct {
 
     static createClass<SD extends StructDefinition>(name: string, definition: SD): StructClass<SD> {
-        const code = `
-(class ${name} {
+        const code =
+`(class ${name} {
     constructor(values) {
         for (let name in values) {
             this[name] = values[name];
@@ -31,8 +31,7 @@ export class Struct {
     patch(values) {
         return new this.constructor({ ...this, ...values });
     }
-})
-`;
+})`;
         const clazz = eval(code);
         clazz.definition = definition;
         return clazz;
