@@ -1,5 +1,5 @@
 
-export class Primitive<T extends number | bigint> {
+export class Primitive<T extends number | bigint = number | bigint> {
 
     public readonly bits: number;
 
