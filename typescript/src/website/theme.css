@@ -1,0 +1,64 @@
+:root {
+    color-scheme: dark;
+    background-color: var(--gray-200);
+
+    --gray-50: rgb(0, 0, 0);
+    --gray-75: rgb(34, 34, 34);
+    --gray-100: rgb(41, 41, 41);
+    --gray-200: rgb(52, 52, 52);
+    --gray-300: rgb(74, 74, 74);
+    --gray-400: rgb(103, 103, 103);
+    --gray-500: rgb(151, 151, 151);
+    --gray-600: rgb(177, 177, 177);
+    --gray-700: rgb(191, 191, 191);
+    --gray-800: rgb(232, 232, 232);
+    --gray-900: rgb(255, 255, 255);
+
+    --violet-50: rgb(22, 20, 34);
+    --violet-75: #201c37;
+    --violet-100: #2b264a;
+    --violet-200: #40396f;
+    --violet-300: #564c94;
+    --violet-400: #6b5fb9;
+    --violet-500: #7a6fc0;
+    --violet-600: #897fc7;
+    --violet-700: #978fce;
+
+    --cyan-50: #002329;
+    --cyan-75: #00343e;
+    --cyan-100: #004652;
+    --cyan-200: #00697c;
+    --cyan-300: #008ca5;
+    --cyan-400: #00AFCE;
+    --cyan-500: #1ab7d3;
+    --cyan-600: #33bfd8;
+    --cyan-700: #4dc7dd;
+
+    --red-300: #cb4646;
+    --red-400: #e14e4e;
+    --red-500: #e46060;
+    --red-600: #e77171;
+    --red-700: #ea8383;
+
+    --blue-200: #3249a7;
+    --blue-300: #3751b9;
+    --blue-400: #4b62c0;
+    --blue-500: #5f74c7;
+    --blue-600: #7385ce;
+    --blue-700: #8797d5;
+
+
+    --accent: var(--blue-400);
+    --warning: var(--red-400);
+
+    --spacing-xs: 2px;
+    --spacing-s:  4px;
+    --spacing-m:  8px;
+    --spacing-l:  16px;
+
+    --text-primary: var(--gray-800);
+    --text-secondary: var(--gray-600);
+    --text-ternary: var(--gray-400);
+
+    --track-radius: 4px;
+}
