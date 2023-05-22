@@ -61,6 +61,7 @@ export enum Type {
 }
 
 export interface BaseMaterial {
+    id: MaterialId;
     type: Type;
     specificHeatCapacity: SpecificHeatCapacity;
     thermalConductivity: ThermalConductivity;
@@ -83,14 +84,14 @@ export interface GasMaterial extends BaseMaterial {
 
 export type Material = SolidMaterial | LiquidMaterial | GasMaterial;
 
-export type MaterialIndex = number;
+export type MaterialId = number;
 
 export interface Block {
     type: Type; //  2 bits
 }
 
 export interface SolidBlock {
-    material: MaterialIndex     //  8 bits
+    material: MaterialId     //  8 bits
 
     //  miscelaneous bits?
     bondX: boolean;             //  1 bit
