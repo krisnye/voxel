@@ -9,20 +9,19 @@ export class Volume<Data extends TypedData> {
     ) {
     }
 
-    static create<T extends { [name: string]: TypedArrayConstructor }>(
+    static create<T extends { [ name: string ]: TypedArrayConstructor }>(
         size: Vector3,
-        dataTypes: T)
-        : Volume<{ [K in keyof T]: InstanceType<T[K]> }>
-     {
-        const length = size[X] * size[Y] * size[Z];
-        const data = Object.fromEntries(Object.entries(dataTypes).map(([name, Type]) => {
-            return [name, new Type(length)];
-        })) as { [K in keyof T]: InstanceType<T[K]> };
-        return new Volume(size, data);
+        dataTypes: T )
+        : Volume<{ [ K in keyof T ]: InstanceType<T[ K ]> }> {
+        const length = size[ X ] * size[ Y ] * size[ Z ];
+        const data = Object.fromEntries( Object.entries( dataTypes ).map( ( [ name, Type ] ) => {
+            return [ name, new Type( length ) ];
+        } ) ) as { [ K in keyof T ]: InstanceType<T[ K ]> };
+        return new Volume( size, data );
     }
 
-    index(x: number, y: number, z: number) {
-        return x + (y + (z * this.size[Y]) * this.size[X]);
+    index( x: number, y: number, z: number ) {
+        return x + ( y + ( z * this.size[ Y ] ) * this.size[ X ] );
     }
 
 }
