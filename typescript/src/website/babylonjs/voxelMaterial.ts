@@ -30,6 +30,9 @@ export default function voxelMaterial( scene: Scene ) {
         // float depth = -dot(viewDirectionW, traceResult.position.xyz - vEyePosition.xyz);
         // gl_FragDepth = depth; // / depthInitial;
         // glFragColor = vec4( vec3(gl_FragDepth), 1.0 );
+
+        // if (traceResult.error)
+        //     glFragColor = vec4( 1.0, 0.0, 0.0, 1.0 );
     ` )
 
     return material

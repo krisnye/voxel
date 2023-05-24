@@ -6,9 +6,10 @@ struct TraceResult {
     vec4 normal;
     int materialId;
     bool hit;
+    bool error;
 };
 
-const int testVolumeWidth = 200;
+const int testVolumeWidth = 128;
 
 vec4 calcPlaceholderTexel(ivec3 pos) {
     vec4 result = vec4(0.0, 0.0, 0.0, 0.0);
@@ -52,6 +53,8 @@ vec3 multVec3(mat4 mat, vec3 v, float w) {
     return (mat * vec4(v, w)).xyz;
 }
 
+const int maxFudgeIters = 2;
+
 TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalWorld) { //, mediump sampler3D voxels, mat4 worldToTexel) {
     TraceResult result;
 
@@ -74,19 +77,38 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
     // Offset a bit by our normal so we don't start inside a voxel.
     pos += initialNormal * .001;
 
-    int iter = 0;
+    int stepIter = 0;
     bool hasEnteredVolume = false;
-    while(iter++ <= testVolumeWidth * 3) {
+    while(stepIter++ < testVolumeWidth * 3) {
         vec3 cellMin = floor(pos);
         vec3 cellMax = cellMin + vec3(1.0);
 
-        vec3 dtMin = (cellMin - pos) / heading;
-        vec3 dtMax = (cellMax - pos) / heading;
-        vec3 dts = max(dtMin, dtMax);
-        vec3 dtSort = sort3(dts);
-        float dt = dtSort.x;
-        float gap = dtSort.y - dt; // Time difference between closest face and second closest face.
-        float fudge = min(0.5, gap * 0.5);
+        vec3 dts;
+        float dt;
+        float fudge;
+        int fudgeIter = 0;
+        while (fudgeIter++ < maxFudgeIters) {
+            vec3 dtMin = (cellMin - pos) / heading;
+            vec3 dtMax = (cellMax - pos) / heading;
+            dts = max(dtMin, dtMax);
+            vec3 dtSort = sort3(dts);
+            dt = dtSort.x;
+
+            // Time difference between closest face and second closest face.
+            float gap = dtSort.y - dt;
+
+            fudge = min(0.5, gap * 0.5);
+            if (fudge < 0.0001) {
+                // Small fudge values are numerically unstable.
+                // Nudge the ray towards the center of the voxel to try and fix it.
+                pos = mix(pos, cellMin + vec3(.5), 0.01);
+                result.error = true;
+            } else {
+                result.error = false;
+                break;
+            }
+        }
+
         pos += heading * (dt + fudge);
 
         bool isOutOfBounds = 

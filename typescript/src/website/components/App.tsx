@@ -36,12 +36,14 @@ export function App() {
         invertedVoxelMesh.material = voxelMaterialIns
         // invertedVoxelMesh.showBoundingBox = true
 
-        const pad = camera.minZ
+        const pad = camera.minZ * 2
         const pad3f = new Vector3( pad, pad, pad )
 
         scene.onBeforeRenderObservable.add( () => {
 
             const boundingBox = voxelBoundingMesh.getBoundingInfo().boundingBox
+            // We need to pad the bounding box because the camera might be within the near clipping distance of the bounding volume,
+            // which could cause a flicker when entering the volume.
             const paddedBoundingBox = new BoundingBox(
                 boundingBox.minimum.subtract( pad3f ),
                 boundingBox.maximum.add( pad3f ),
@@ -63,7 +65,7 @@ export function App() {
                 fpsCounter.innerText = `${ engine.getFps().toFixed( 2 ) } FPS`
         } )
 
-        const fxaa = new FxaaPostProcess( "fxaa", 2.0, camera )
+        const fxaa = new FxaaPostProcess( "fxaa", 1.0, camera )
     }
 
     return <div className="fullscreen relative">
