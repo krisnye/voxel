@@ -1,4 +1,4 @@
-import { TypedArrayConstructor, TypedData } from "../data/types.js";
+import { TypedArrayConstructor, TypedData } from "./types.js";
 import { Vector3, X, Y, Z } from "../math/types.js";
 
 export class Volume<Data extends TypedData> {

@@ -1,6 +1,11 @@
 import { Vector3 } from "../math/types";
 
 /**
+ * F32: Meter
+ */
+export type Distance = number;
+
+/**
  * I31: RGB or ARGB
  */
 export type Color = number;
@@ -21,6 +26,11 @@ export type Density = number;
 export type Pressure = number;
 
 /**
+ * F32: Kg
+ */
+export type Mass = number;
+
+/**
  * F32: ?
  */
  export type Viscosity = number;
@@ -36,7 +46,7 @@ export type Light = Vector3;
 export type ThermalConductivity = number;
 
 /**
- * F32: Joules / Gram Kelvin
+ * F32: Joules / Kg Kelvin
  */
 export type SpecificHeatCapacity = number;
 
@@ -72,6 +82,11 @@ export interface SolidMaterial extends BaseMaterial {
     density: Density;
 }
 
+export interface GrainMaterial extends BaseMaterial {
+    type: Type.grain;
+    density: Density;
+}
+
 export interface LiquidMaterial extends BaseMaterial {
     type: Type.liquid;
     density: Density;
@@ -82,10 +97,11 @@ export interface GasMaterial extends BaseMaterial {
     type: Type.gas;
 }
 
-export type Material = SolidMaterial | LiquidMaterial | GasMaterial;
+export type Material = SolidMaterial | GrainMaterial | LiquidMaterial | GasMaterial;
 
 export type MaterialId = number;
 
+//  experimental type
 export interface Block {
     type: Type; //  2 bits
 }

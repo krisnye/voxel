@@ -1,5 +1,5 @@
 import { X, Y, Z } from "../../math/types.js";
-import { Volume } from "../Volume.js";
+import { Volume } from "../../data/Volume.js";
 import { materials } from "../materials.js";
 
 export function fillWithTestMaterial(volume: Volume<{ material: Uint8Array }>) {
