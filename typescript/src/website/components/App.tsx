@@ -3,7 +3,7 @@ import { useState } from "preact/hooks"
 import SceneComponent from "./SceneComponent"
 import Babylon, {
     Engine, Scene, MeshBuilder, Vector3, Color3, FxaaPostProcess, Color4, Material,
-    BoundingBox
+    BoundingBox, SSAO2RenderingPipeline, StandardMaterial
 } from "@babylonjs/core"
 import { addDefaultLights, defaultCamera } from "../babylonjs/BabylonUtils"
 import voxelMaterial from "../babylonjs/voxelMaterial"
@@ -15,6 +15,11 @@ export function App() {
         addDefaultLights( scene )
         const camera = defaultCamera( scene )
 
+        // const s = 1 / 255
+        // scene.fogColor = new Color3( 52 * s, 52 * s, 52 * s )
+        // scene.fogMode = Scene.FOGMODE_EXP2
+        // scene.fogDensity = 0.25
+
         const voxelMaterialIns = voxelMaterial( scene )
 
         // Mesh used to draw voxels when camera is outside the volume.
@@ -23,13 +28,13 @@ export function App() {
         voxelBoundingMesh.position.y += .5
         voxelBoundingMesh.position.z += .5
         voxelBoundingMesh.material = voxelMaterialIns
-        voxelBoundingMesh.showBoundingBox = true
+        // voxelBoundingMesh.showBoundingBox = true
 
         // Mesh used to draw voxels when camera is inside the volume.
         const invertedVoxelMeshOptions = { size: camera.minZ * 3, sideOrientation: Material.CounterClockWiseSideOrientation }
         const invertedVoxelMesh = MeshBuilder.CreateBox( "InvertedVoxelMesh", invertedVoxelMeshOptions )
         invertedVoxelMesh.material = voxelMaterialIns
-        invertedVoxelMesh.showBoundingBox = true
+        // invertedVoxelMesh.showBoundingBox = true
 
         const pad = camera.minZ
         const pad3f = new Vector3( pad, pad, pad )

@@ -28,9 +28,9 @@ export function defaultCamera( scene: Scene ) {
 
     cam.inputs.addMouseWheel()
     let wheelInput = ( cam.inputs.attached.mousewheel as unknown ) as Babylon.BaseCameraMouseWheelInput
-    wheelInput.wheelPrecisionX *= 0.1
-    wheelInput.wheelPrecisionY *= 0.1
-    wheelInput.wheelPrecisionZ *= 0.1
+    wheelInput.wheelPrecisionX *= 0.02
+    wheelInput.wheelPrecisionY *= 0.02
+    wheelInput.wheelPrecisionZ *= 0.02
 
     cam.position.x = 2
     cam.position.y = 2

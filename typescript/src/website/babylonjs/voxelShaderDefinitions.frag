@@ -8,38 +8,36 @@ struct TraceResult {
     bool hit;
 };
 
-const int testVolumeWidth = 50;
+const int testVolumeWidth = 200;
 
 vec4 calcPlaceholderTexel(ivec3 pos) {
-    pos = clamp(pos, ivec3(0), ivec3(testVolumeWidth));
     vec4 result = vec4(0.0, 0.0, 0.0, 0.0);
 
     vec3 posf = vec3(pos);
     float testVolumeWidthF = float(testVolumeWidth);
     float radius = testVolumeWidthF / 2.0;
-
-    // vec3 delta = abs(radius - posf);
-    // if ( ( delta.x + delta.y + delta.z) < radius - 1.0) result.a = 1.0;
+    
     // if(posf.y + sin(posf.x / 5.) * 10. < radius) result.a = 1.0;
-    // if(float(pos.y) < float(pos.x)) result.a = 1.0;
+    
+    // if(posf.y < testVolumeWidthF - posf.z) result.a = 1.0;
+
     // if(posf.y < radius) result.a = 1.0;
 
     float l = length(posf - vec3(radius));
-    if (l < radius && l > radius * .5) result.a = 1.0;
+    if (l < radius) result.a = 1.0;
+    // if (l < radius * .5) result.a = 0.0;
 
-    if (posf.x >= radius && posf.z >= radius)
-        result.a = 0.0;
+    // if (posf.x >= radius && posf.z >= radius && posf.y >= radius)
+    //     result.a = 0.0;
 
-    if (pos.x <= 0 || pos.x >= testVolumeWidth - 1) result.a = 0.0;
-    if (pos.y <= 0 || pos.y >= testVolumeWidth - 1) result.a = 0.0;
-    if (pos.z <= 0 || pos.z >= testVolumeWidth - 1) result.a = 0.0;
+    vec3 delta = abs(radius - posf);
+    if ( ( delta.x + delta.z) < radius - posf.y) result.a = 1.0;
+
+    // if (l < radius * .6) result.a = 0.0;
+    
+    // result.a = 1.0;
 
     return result;
-}
-
-vec3 noSmallComponents(vec3 v) {
-    const float eps = 0.0025;
-    return sign(v) * max(abs(v), vec3(eps));
 }
 
 vec3 sort3(vec3 v) {
@@ -50,10 +48,12 @@ vec3 sort3(vec3 v) {
     return v;
 }
 
-TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld) { //, mediump sampler3D voxels, mat4 worldToTexel) {
-    TraceResult result;
+vec3 multVec3(mat4 mat, vec3 v, float w) {
+    return (mat * vec4(v, w)).xyz;
+}
 
-    headingWorld = noSmallComponents(headingWorld);
+TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalWorld) { //, mediump sampler3D voxels, mat4 worldToTexel) {
+    TraceResult result;
 
     // vec3 texSize = vec3(textureSize(voxels, 0));
     vec3 texSize = vec3(testVolumeWidth);
@@ -67,11 +67,12 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld) { //, mediump sampl
     );
 
     // Convert to texel space.
-    vec3 pos = (worldToTexel * vec4(posWorld, 1.0)).xyz;
-    vec3 heading = (worldToTexel * vec4(headingWorld, 0.0)).xyz;
-    heading = noSmallComponents( normalize( heading ) );
+    vec3 pos = multVec3(worldToTexel, posWorld, 1.0);
+    vec3 initialNormal = normalize(multVec3(worldToTexel, initialNormalWorld, 0.0));
+    vec3 heading = normalize( multVec3(worldToTexel, headingWorld, 0.0) );
 
-    // pos -= heading * 1.0;
+    // Offset a bit by our normal so we don't start inside a voxel.
+    pos += initialNormal * .001;
 
     int iter = 0;
     bool hasEnteredVolume = false;
@@ -79,50 +80,53 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld) { //, mediump sampl
         vec3 cellMin = floor(pos);
         vec3 cellMax = cellMin + vec3(1.0);
 
-        vec3 dtMin = noSmallComponents((cellMin - pos) / heading);
-        vec3 dtMax = noSmallComponents((cellMax - pos) / heading);
+        vec3 dtMin = (cellMin - pos) / heading;
+        vec3 dtMax = (cellMax - pos) / heading;
         vec3 dts = max(dtMin, dtMax);
         vec3 dtSort = sort3(dts);
         float dt = dtSort.x;
         float gap = dtSort.y - dt; // Time difference between closest face and second closest face.
-        float fudge = min(0.001, gap * 0.5);
+        float fudge = min(0.5, gap * 0.5);
         pos += heading * (dt + fudge);
 
-        // vec4 texel = texelFetch(voxels, ivec3(pos + heading * .25), 0);
-        vec4 texel = calcPlaceholderTexel(ivec3(pos));
-        int materialId = int(texel.a);
-
-        if(materialId > 0) {
-
-            result.normal = vec4(0.0);
-            if(dt == dts.x)
-                result.normal.x = -sign(heading.x);
-            else if(dt == dts.y)
-                result.normal.y = -sign(heading.y);
-            else //if(dt == dts.z)
-                result.normal.z = -sign(heading.z);
-
-            mat4 texelToWorld = inverse(worldToTexel);
-            result.normal = normalize(texelToWorld * result.normal);
-            result.position = texelToWorld * vec4(pos, 1.0);
-            result.materialId = materialId;
-            result.hit = true;
-
-            return result;
-        }
-
         bool isOutOfBounds = 
-            pos.x < 0.0 || pos.x > texSize.x ||
-            pos.y < 0.0 || pos.y > texSize.y ||
-            pos.z < 0.0 || pos.z > texSize.z;
+            pos.x < 0.0 || pos.x >= texSize.x ||
+            pos.y < 0.0 || pos.y >= texSize.y ||
+            pos.z < 0.0 || pos.z >= texSize.z;
+            
         if(isOutOfBounds) {
             if (hasEnteredVolume) {
                 result.hit = false;
                 return result;
             }
-        } else {
-            hasEnteredVolume = true;
+            continue;
         }
+
+        hasEnteredVolume = true;
+
+        // vec4 texel = texelFetch(voxels, ivec3(pos), 0);
+        vec4 texel = calcPlaceholderTexel(ivec3(pos));
+        int materialId = int(texel.a);
+
+        if (materialId <= 0)
+            continue;
+
+        result.normal = vec4(0.0);
+        if(dt == dts.x)
+            result.normal.x = -sign(heading.x);
+        else if(dt == dts.y)
+            result.normal.y = -sign(heading.y);
+        else //if(dt == dts.z)
+            result.normal.z = -sign(heading.z);
+
+        mat4 texelToWorld = inverse(worldToTexel);
+        result.normal = normalize(texelToWorld * result.normal);
+        result.position = texelToWorld * vec4(pos, 1.0);
+        result.materialId = materialId;
+        result.hit = true;
+
+        return result;
+
     }
 
 }
