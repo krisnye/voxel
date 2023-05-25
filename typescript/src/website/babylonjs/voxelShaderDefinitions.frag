@@ -1,44 +1,35 @@
 #version 300 es
 precision highp float;
+// @end-defs
 
 struct TraceResult {
     vec4 position;
+    ivec3 cell;
     vec4 normal;
-    int materialId;
+    uint materialId;
     bool hit;
     bool error;
 };
 
-const int testVolumeWidth = 128;
+const int testVolumeWidth = 200;
 
-vec4 calcPlaceholderTexel(ivec3 pos) {
-    vec4 result = vec4(0.0, 0.0, 0.0, 0.0);
+uvec4 calcPlaceholderTexel(ivec3 pos) {
+    uvec4 result = uvec4(0);
 
     vec3 posf = vec3(pos);
-    float testVolumeWidthF = float(testVolumeWidth);
-    float radius = testVolumeWidthF / 2.0;
+    float radius = float(testVolumeWidth) / 2.0;
     
-    // if(posf.y + sin(posf.x / 5.) * 10. < radius) result.a = 1.0;
+    float l = length(posf - vec3(radius - .5));
+    if (l < radius) result.r = 1u;
     
-    // if(posf.y < testVolumeWidthF - posf.z) result.a = 1.0;
-
-    // if(posf.y < radius) result.a = 1.0;
-
-    float l = length(posf - vec3(radius));
-    if (l < radius) result.a = 1.0;
-    // if (l < radius * .5) result.a = 0.0;
-
-    // if (posf.x >= radius && posf.z >= radius && posf.y >= radius)
-    //     result.a = 0.0;
-
-    vec3 delta = abs(radius - posf);
-    if ( ( delta.x + delta.z) < radius - posf.y) result.a = 1.0;
-
-    // if (l < radius * .6) result.a = 0.0;
-    
-    // result.a = 1.0;
-
     return result;
+}
+
+uvec4 getTexel(ivec3 pos) {
+    // @get-texel
+}
+vec3 getDiffuse(TraceResult traceResult) {
+    // @get-diffuse
 }
 
 vec3 sort3(vec3 v) {
@@ -55,10 +46,10 @@ vec3 multVec3(mat4 mat, vec3 v, float w) {
 
 const int maxFudgeIters = 2;
 
-TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalWorld) { //, mediump sampler3D voxels, mat4 worldToTexel) {
+TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalWorld ) { //, mediump sampler3D voxels, mat4 worldToTexel) {
     TraceResult result;
 
-    // vec3 texSize = vec3(textureSize(voxels, 0));
+    // vec3 texSize = vec3(textureSize(voxelTexture, 0));
     vec3 texSize = vec3(testVolumeWidth);
     vec3 boxSize = vec3(1.0);
     vec3 s = texSize / boxSize;
@@ -79,7 +70,7 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
 
     int stepIter = 0;
     bool hasEnteredVolume = false;
-    while(stepIter++ < testVolumeWidth * 3) {
+    while(stepIter++ < int(texSize.x) * 3) {
         vec3 cellMin = floor(pos);
         vec3 cellMax = cellMin + vec3(1.0);
 
@@ -100,8 +91,8 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
             fudge = min(0.5, gap * 0.5);
             if (fudge < 0.0001) {
                 // Small fudge values are numerically unstable.
-                // Nudge the ray towards the center of the voxel to try and fix it.
-                pos = mix(pos, cellMin + vec3(.5), 0.01);
+                // Nudge the ray to try and break the tie.
+                pos = mix(pos, cellMin + vec3(.5, .25, .125), 0.01);
                 result.error = true;
             } else {
                 result.error = false;
@@ -126,11 +117,11 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
 
         hasEnteredVolume = true;
 
-        // vec4 texel = texelFetch(voxels, ivec3(pos), 0);
-        vec4 texel = calcPlaceholderTexel(ivec3(pos));
-        int materialId = int(texel.a);
+        // uvec4 texel = texelFetch(voxelTexture, ivec3(pos), 0);
+        uvec4 texel = getTexel(ivec3(pos));
+        uint materialId = texel.r;
 
-        if (materialId <= 0)
+        if (materialId <= 0u)
             continue;
 
         result.normal = vec4(0.0);
@@ -143,6 +134,7 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
 
         mat4 texelToWorld = inverse(worldToTexel);
         result.normal = normalize(texelToWorld * result.normal);
+        result.cell = ivec3(pos);
         result.position = texelToWorld * vec4(pos, 1.0);
         result.materialId = materialId;
         result.hit = true;

@@ -1,20 +1,38 @@
-import Babylon, { Scene, Vector3, DirectionalLight, Color3, FreeCamera } from "@babylonjs/core"
+import Babylon, { Scene, Vector3, DirectionalLight, Color3, FreeCamera, HemisphericLight, TransformNode, Node } from "@babylonjs/core"
 import { MouseButtons } from "../utils/MouseButtons"
 
 export function addDefaultLights( scene: Scene ) {
-    scene.createDefaultLight()
+    // scene.createDefaultLight()
 
-    const sunDir = new Vector3( -3, -3, -1 ).normalize()
-    const sunLight = new DirectionalLight( "SunLight", sunDir, scene )
-    sunLight.diffuse = new Color3( 1, 1, .5 )
+    // const sunDir = new Vector3( -3, -3, -1 ).normalize()
+    // const sunLight = new DirectionalLight( "sunLight", sunDir, scene )
+    // sunLight.diffuse = new Color3( 1, 1, .5 )
+    // // sunLight.position.y += 1
 
-    const bounceLightDir = new Vector3( 3, 3, 1 ).normalize()
-    const bounceLight = new DirectionalLight( "BounceLight", bounceLightDir, scene )
-    bounceLight.diffuse = new Color3( .35, .35, .5 )
+    // const bounceLightDir = new Vector3( 3, 3, 1 ).normalize()
+    // const bounceLight = new DirectionalLight( "bounceLight", bounceLightDir, scene )
+    // bounceLight.diffuse = new Color3( .35, .35, .5 )
+
+    const i = .5 // ambient intensity
+    createAmbientLight( "ambientLight", new Color3( i, i, i ), scene )
+}
+
+export function createAmbientLight( name: string, color: Color3, scene: Scene ) {
+    const ambientLightUp = new HemisphericLight( `${ name }_up`, Vector3.Up(), scene )
+    const ambientLightDown = new HemisphericLight( `${ name }_down`, Vector3.Down(), scene )
+    ambientLightUp.diffuse = ambientLightDown.diffuse = color
+    return groupNodes( name, ambientLightUp, ambientLightDown )
+}
+
+export function groupNodes( name: string, ...nodes: Node[] ) {
+    const group = new TransformNode( name )
+    for ( let node of nodes )
+        node.parent = group
+    return group
 }
 
 export function defaultCamera( scene: Scene ) {
-    const cam = new FreeCamera( "FreeCam", new Vector3( 0, 1, -1 ), scene )
+    const cam = new FreeCamera( "freeCam", new Vector3( 0, 1, -1 ), scene )
     cam.minZ = 0.01
 
     addWASDControls( cam )
