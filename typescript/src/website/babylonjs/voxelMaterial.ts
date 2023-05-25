@@ -1,4 +1,4 @@
-import { Color3, Engine, RawTexture3D, Scene, ShadowDepthWrapper, Texture, Vector3 } from "@babylonjs/core"
+import { Color3, Engine, Matrix, Node, RawTexture3D, Scene, ShadowDepthWrapper, Texture, Vector3 } from "@babylonjs/core"
 import { CustomMaterial } from "@babylonjs/materials"
 
 import _voxelShaderDefinitions from "./voxelShaderDefinitions.frag?raw"
@@ -8,14 +8,19 @@ const voxelShaderDefinitions = _voxelShaderDefinitions.slice( _voxelShaderDefini
 type VoxelMaterialOptions = {
     getTexel?: string,
     getDiffuse?: string,
-    textures?: { [ key: string ]: { type: string, value: Texture } }
+    resolution?: number,
+    /** Given in model space. */
+    texelOriginOffset?: Vector3,
+    textures?: { [ key: string ]: { type: string, value: Texture } },
 }
 
 export default function voxelMaterial(
     scene: Scene, {
         getTexel = "return calcPlaceholderTexel(pos);",
         getDiffuse = "return (traceResult.normal.xyz + vec3(1.0)) / 2.0;",
-        textures
+        resolution = 200,
+        texelOriginOffset = new Vector3( .5, .5, .5 ),
+        textures,
     }: VoxelMaterialOptions
 ) {
     const material = new CustomMaterial( "VoxelMaterial", scene )
@@ -31,6 +36,20 @@ export default function voxelMaterial(
                 effect.setTexture( name, textures[ name ].value )
         } )
     }
+
+    const worldToTexel = new Matrix()
+    const modelToTexel = Matrix.Translation( texelOriginOffset.x, texelOriginOffset.y, texelOriginOffset.z )
+        .multiply( Matrix.Scaling( resolution, resolution, resolution ) )
+    material.AddUniform( "worldToTexel", "mat4", undefined )
+    material.AddUniform( "resolution", "float", undefined )
+    material.onBindObservable.add( ( mesh ) => {
+        const node = mesh.parent ?? mesh
+        const effect = material.getEffect()
+
+        node.getWorldMatrix().invertToRef( worldToTexel ).multiplyToRef( modelToTexel, worldToTexel )
+        effect.setMatrix( "worldToTexel", worldToTexel )
+        effect.setFloat( "resolution", resolution )
+    } )
 
     material.alphaMode = 1
     material.specularColor = Color3.White().scale( .1 )

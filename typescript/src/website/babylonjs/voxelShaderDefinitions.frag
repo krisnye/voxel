@@ -1,5 +1,7 @@
 #version 300 es
 precision highp float;
+uniform float resolution;
+uniform mat4 worldToTexel;
 // @end-defs
 
 struct TraceResult {
@@ -11,8 +13,19 @@ struct TraceResult {
     bool error;
 };
 
-const int testVolumeWidth = 200;
+vec3 sort3(vec3 v) {
+    // Manual bubble sort:
+    if (v.x > v.y) v.xy = v.yx;
+    if (v.y > v.z) v.yz = v.zy;
+    if (v.x > v.y) v.xy = v.yx;
+    return v;
+}
 
+vec3 multVec3(mat4 mat, vec3 v, float w) {
+    return (mat * vec4(v, w)).xyz;
+}
+
+const int testVolumeWidth = 200;
 uvec4 calcPlaceholderTexel(ivec3 pos) {
     uvec4 result = uvec4(0);
 
@@ -27,21 +40,11 @@ uvec4 calcPlaceholderTexel(ivec3 pos) {
 
 uvec4 getTexel(ivec3 pos) {
     // @get-texel
+    return uvec4(0u);
 }
 vec3 getDiffuse(TraceResult traceResult) {
     // @get-diffuse
-}
-
-vec3 sort3(vec3 v) {
-    // Manual bubble sort:
-    if (v.x > v.y) v.xy = v.yx;
-    if (v.y > v.z) v.yz = v.zy;
-    if (v.x > v.y) v.xy = v.yx;
-    return v;
-}
-
-vec3 multVec3(mat4 mat, vec3 v, float w) {
-    return (mat * vec4(v, w)).xyz;
+    return vec3(0.0);
 }
 
 const int maxFudgeIters = 2;
@@ -49,16 +52,7 @@ const int maxFudgeIters = 2;
 TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalWorld ) { //, mediump sampler3D voxels, mat4 worldToTexel) {
     TraceResult result;
 
-    // vec3 texSize = vec3(textureSize(voxelTexture, 0));
-    vec3 texSize = vec3(testVolumeWidth);
-    vec3 boxSize = vec3(1.0);
-    vec3 s = texSize / boxSize;
-    mat4 worldToTexel = mat4(
-        s.x, 0.0, 0.0, 0.0, 
-        0.0, s.y, 0.0, 0.0, 
-        0.0, 0.0, s.z, 0.0,
-        0.0, 0.0, 0.0, 1.0
-    );
+    vec3 texSize = vec3(resolution);
 
     // Convert to texel space.
     vec3 pos = multVec3(worldToTexel, posWorld, 1.0);
@@ -117,7 +111,6 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
 
         hasEnteredVolume = true;
 
-        // uvec4 texel = texelFetch(voxelTexture, ivec3(pos), 0);
         uvec4 texel = getTexel(ivec3(pos));
         uint materialId = texel.r;
 

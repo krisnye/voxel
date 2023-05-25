@@ -3,7 +3,7 @@ import { useState } from "preact/hooks"
 import SceneComponent from "./SceneComponent"
 import Babylon, {
     Engine, Scene, MeshBuilder, Vector3, Color3, FxaaPostProcess, Color4, Material,
-    BoundingBox, StandardMaterial, RawTexture3D, Texture, Camera, Plane, DirectionalLight, ShadowGenerator, Mesh, PointLight, Light
+    BoundingBox, StandardMaterial, RawTexture3D, Texture, Camera, Plane, DirectionalLight, ShadowGenerator, Mesh, PointLight, Light, Matrix, Vector4
 } from "@babylonjs/core"
 import { addDefaultLights, defaultCamera, groupNodes } from "../babylonjs/BabylonUtils"
 import voxelMaterial from "../babylonjs/voxelMaterial"
@@ -24,7 +24,21 @@ export function App() {
             }
         } )
 
-        const voxelChunkNode = makeVoxelChunkNode( "ChunkNode0", voxelMaterialIns, camera, scene )
+        let voxelChunkNode = makeVoxelChunkNode( "ChunkNode0", voxelMaterialIns, camera, scene )
+        voxelChunkNode.position.x += .5
+        voxelChunkNode.position.y += .5
+        voxelChunkNode.position.z += .5
+        // voxelChunkNode.scaling.scaleInPlace( 2 )
+
+        scene.onBeforeRenderObservable.add( () => {
+
+            const t = performance.now() / 1000 * Math.PI * 2
+            voxelChunkNode.position.y = .5 + Math.sin( t / 16 ) / 10
+
+            const fpsCounter = document.getElementById( "fpsCounter" )
+            if ( fpsCounter ) fpsCounter.innerText = `${ engine.getFps().toFixed( 2 ) } FPS`
+        }, undefined, true )
+
 
         const light = new PointLight( "tmpLight", new Vector3( -.501, 2.01, -.501 ), scene )
         light.diffuse = new Color3( .75, .75, .5 )
@@ -33,19 +47,14 @@ export function App() {
         // @ts-ignore
         shadowGen.getShadowMap().renderList.push( ...voxelChunkNode.getChildMeshes() )
 
-
         const plane = new Plane( 0, 1, 0, 0 )
         const planeMesh = MeshBuilder.CreatePlane( "Ground", { size: 10, sourcePlane: plane, sideOrientation: Mesh.DOUBLESIDE } )
         // planeMesh.position.y += .5
         planeMesh.receiveShadows = true
         const planeMat = new StandardMaterial( "PlaneMat", scene )
         planeMat.specularColor = Color3.Black()
+        planeMat.diffuseColor = Color3.White().scaleInPlace( .5 )
         planeMesh.material = planeMat
-
-        scene.onBeforeRenderObservable.add( () => {
-            const fpsCounter = document.getElementById( "fpsCounter" )
-            if ( fpsCounter ) fpsCounter.innerText = `${ engine.getFps().toFixed( 2 ) } FPS`
-        } )
 
     }
 
@@ -64,9 +73,6 @@ function makeVoxelChunkNode( name: string, material: Material, camera: Camera, s
 
     // Mesh used to draw voxels when camera is outside the volume.
     const voxelBoundingMesh = MeshBuilder.CreateBox( "VoxelBoundingBox", { size: 1.1 } )
-    voxelBoundingMesh.position.x += .5
-    voxelBoundingMesh.position.y += .5
-    voxelBoundingMesh.position.z += .5
     voxelBoundingMesh.material = material
     // voxelBoundingMesh.showBoundingBox = true
 
@@ -76,14 +82,12 @@ function makeVoxelChunkNode( name: string, material: Material, camera: Camera, s
     invertedVoxelMesh.material = material
     // invertedVoxelMesh.showBoundingBox = true
 
-    // voxelBoundingMesh.receiveShadows = true
-    // invertedVoxelMesh.receiveShadows = true
-
     const group = groupNodes( name, voxelBoundingMesh, invertedVoxelMesh )
 
     const pad = camera.minZ * 2
     const pad3f = new Vector3( pad, pad, pad )
 
+    const groupToWorldMat = new Matrix()
     const renderObserver = scene.onBeforeRenderObservable.add( () => {
 
         const boundingBox = voxelBoundingMesh.getBoundingInfo().boundingBox
@@ -97,7 +101,8 @@ function makeVoxelChunkNode( name: string, material: Material, camera: Camera, s
 
         const cameraInVoxelMesh = paddedBoundingBox.intersectsPoint( camera.position )
         if ( cameraInVoxelMesh ) {
-            invertedVoxelMesh.position = camera.position
+            group.computeWorldMatrix( true ).invertToRef( groupToWorldMat )
+            Vector3.TransformCoordinatesToRef( camera.position, groupToWorldMat, invertedVoxelMesh.position )
             invertedVoxelMesh.isVisible = true
             // voxelBoundingMesh.isVisible = false
         } else {
@@ -114,7 +119,6 @@ function makeVoxelChunkNode( name: string, material: Material, camera: Camera, s
     return group
 
 }
-
 
 function createVoxelTexture( scene: Scene ) {
     const width = 200
