@@ -18,22 +18,27 @@ export function App() {
 
         const voxelTexture = createVoxelTexture( scene )
         const voxelMaterialIns = voxelMaterial( scene, {
-            getTexel: "return texelFetch(voxelTexture, ivec3(pos), 0);",
+            getIsOccupied: `return texelFetch(voxelTexture, ivec3(pos), 0).r > 0u;`,
+            getDiffuse: `
+                vec3 normal = traceResult.normal.xyz;
+                return (normal + vec3(1.0)) / 2.0;
+            `,
             textures: {
                 voxelTexture: { type: "lowp usampler3D", value: voxelTexture }
-            }
+            },
+            resolution: voxelTexture.getSize().width
         } )
 
         let voxelChunkNode = makeVoxelChunkNode( "ChunkNode0", voxelMaterialIns, camera, scene )
         voxelChunkNode.position.x += .5
         voxelChunkNode.position.y += .5
         voxelChunkNode.position.z += .5
-        // voxelChunkNode.scaling.scaleInPlace( 2 )
 
         scene.onBeforeRenderObservable.add( () => {
 
             const t = performance.now() / 1000 * Math.PI * 2
-            voxelChunkNode.position.y = .5 + Math.sin( t / 16 ) / 10
+            voxelChunkNode.position.y = .75 + Math.sin( t / 16 ) / 10
+            voxelChunkNode.rotation.y = t / 10
 
             const fpsCounter = document.getElementById( "fpsCounter" )
             if ( fpsCounter ) fpsCounter.innerText = `${ engine.getFps().toFixed( 2 ) } FPS`
@@ -43,7 +48,9 @@ export function App() {
         const light = new PointLight( "tmpLight", new Vector3( -.501, 2.01, -.501 ), scene )
         light.diffuse = new Color3( .75, .75, .5 )
         light.shadowEnabled = true
-        const shadowGen = new ShadowGenerator( 512, light, true )
+        const shadowGen = new ShadowGenerator( 1024, light, true )
+        // shadowGen.useBlurExponentialShadowMap = true
+        // shadowGen.filteringQuality = ShadowGenerator.QUALITY_HIGH
         // @ts-ignore
         shadowGen.getShadowMap().renderList.push( ...voxelChunkNode.getChildMeshes() )
 
@@ -86,6 +93,7 @@ function makeVoxelChunkNode( name: string, material: Material, camera: Camera, s
 
     const pad = camera.minZ * 2
     const pad3f = new Vector3( pad, pad, pad )
+    const paddedBoundingBox = new BoundingBox( new Vector3(), new Vector3(), undefined )
 
     const groupToWorldMat = new Matrix()
     const renderObserver = scene.onBeforeRenderObservable.add( () => {
@@ -93,9 +101,9 @@ function makeVoxelChunkNode( name: string, material: Material, camera: Camera, s
         const boundingBox = voxelBoundingMesh.getBoundingInfo().boundingBox
         // We need to pad the bounding box because the camera might be within the near clipping distance of the bounding volume,
         // which could cause a flicker when entering the volume.
-        const paddedBoundingBox = new BoundingBox(
-            boundingBox.minimum.subtract( pad3f ),
-            boundingBox.maximum.add( pad3f ),
+        paddedBoundingBox.reConstruct(
+            boundingBox.minimum.subtractToRef( pad3f, paddedBoundingBox.minimum ),
+            boundingBox.maximum.addToRef( pad3f, paddedBoundingBox.maximum ),
             boundingBox.getWorldMatrix()
         )
 
@@ -121,7 +129,7 @@ function makeVoxelChunkNode( name: string, material: Material, camera: Camera, s
 }
 
 function createVoxelTexture( scene: Scene ) {
-    const width = 200
+    const width = 100
     const half = width / 2
 
     function hypot3( x: number, y: number, z: number ) {
@@ -139,19 +147,19 @@ function createVoxelTexture( scene: Scene ) {
             for ( let x = 0; x < width; x++ ) {
                 let value = 0
 
-                let x2 = x + Math.sin( y / 5 ) * 20
-                let y2 = y + Math.cos( z / 5 ) * 20
-                let z2 = z + Math.sin( x / 5 ) * 20
+                let x2 = x + .5 + Math.sin( y / 5 ) * 20
+                let y2 = y + .5 + Math.cos( z / 5 ) * 20
+                let z2 = z + .5 + Math.sin( x / 5 ) * 20
 
                 let radius = half
-                let r = hypot3( x2 + .5 - radius, y2 + .5 - radius, z2 + .5 - radius )
-                // if ( Math.abs( y - half ) < width / 160 )
-                //     r += width / 80
-                if ( r < half * .25 ) {
-                    // const h = radius * 1.8
-                    // const r2 = hypot3( x2 + .5 - h, y2 + .5 - h, z2 + .5 - h )
-                    // if ( r2 > width / 4 )
-                    value = 1
+                let r = hypot3( x2 - radius, y2 - radius, z2 - radius )
+                // if ( Math.abs( y - half ) < width / 80 )
+                //     r += width / 40
+                if ( r < half * .5 ) {
+                    const h = radius * 1.8
+                    const r2 = hypot3( x2 - h, y2 - h, z2 - h )
+                    if ( r2 > width / 4 )
+                        value = 1
                 }
 
                 data[ i++ ] = value

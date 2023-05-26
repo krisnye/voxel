@@ -2,13 +2,13 @@
 precision highp float;
 uniform float resolution;
 uniform mat4 worldToTexel;
+uniform mat4 texelToWorld;
 // @end-defs
 
 struct TraceResult {
     vec4 position;
     ivec3 cell;
     vec4 normal;
-    uint materialId;
     bool hit;
     bool error;
 };
@@ -25,26 +25,26 @@ vec3 multVec3(mat4 mat, vec3 v, float w) {
     return (mat * vec4(v, w)).xyz;
 }
 
-const int testVolumeWidth = 200;
-uvec4 calcPlaceholderTexel(ivec3 pos) {
-    uvec4 result = uvec4(0);
+const int testVolumeWidth = 100;
+bool getIsOccupided_placeHolder(ivec3 pos, uint lod) {
+    bool result = false;
 
     vec3 posf = vec3(pos);
     float radius = float(testVolumeWidth) / 2.0;
     
     float l = length(posf - vec3(radius - .5));
-    if (l < radius) result.r = 1u;
+    if (l < radius) result = true;
     
     return result;
 }
 
-uvec4 getTexel(ivec3 pos) {
-    // @get-texel
-    return uvec4(0u);
-}
 vec3 getDiffuse(TraceResult traceResult) {
     // @get-diffuse
     return vec3(0.0);
+}
+bool getIsOccupided(ivec3 pos, uint lod) {
+    // @get-is-occupied
+    return true;
 }
 
 const int maxFudgeIters = 2;
@@ -111,12 +111,10 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
 
         hasEnteredVolume = true;
 
-        uvec4 texel = getTexel(ivec3(pos));
-        uint materialId = texel.r;
-
-        if (materialId <= 0u)
+        bool occupied = getIsOccupided(ivec3(pos), 0u);
+        if (!occupied)
             continue;
-
+        
         result.normal = vec4(0.0);
         if(dt == dts.x)
             result.normal.x = -sign(heading.x);
@@ -125,11 +123,9 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
         else //if(dt == dts.z)
             result.normal.z = -sign(heading.z);
 
-        mat4 texelToWorld = inverse(worldToTexel);
         result.normal = normalize(texelToWorld * result.normal);
         result.cell = ivec3(pos);
         result.position = texelToWorld * vec4(pos, 1.0);
-        result.materialId = materialId;
         result.hit = true;
 
         return result;

@@ -6,26 +6,31 @@ const endDefsToken = "// @end-defs"
 const voxelShaderDefinitions = _voxelShaderDefinitions.slice( _voxelShaderDefinitions.indexOf( endDefsToken ) + endDefsToken.length )
 
 type VoxelMaterialOptions = {
-    getTexel?: string,
     getDiffuse?: string,
+    getIsOccupied?: string,
     resolution?: number,
     /** Given in model space. */
-    texelOriginOffset?: Vector3,
+    texelOrigin?: Vector3,
     textures?: { [ key: string ]: { type: string, value: Texture } },
 }
 
 export default function voxelMaterial(
-    scene: Scene, {
-        getTexel = "return calcPlaceholderTexel(pos);",
+    scene: Scene,
+    options: VoxelMaterialOptions,
+    isShadowMaterial: boolean = false
+) {
+    const {
+        getIsOccupied = "return getIsOccupided_placeHolder(pos, lod);",
         getDiffuse = "return (traceResult.normal.xyz + vec3(1.0)) / 2.0;",
         resolution = 200,
-        texelOriginOffset = new Vector3( .5, .5, .5 ),
+        texelOrigin = new Vector3( .5, .5, .5 ),
         textures,
-    }: VoxelMaterialOptions
-) {
-    const material = new CustomMaterial( "VoxelMaterial", scene )
+    } = options
 
-    material.shadowDepthWrapper = new ShadowDepthWrapper( material, scene )
+    const material = new CustomMaterial( `VoxelMaterial${ isShadowMaterial ? "_shadow" : "" }`, scene )
+
+    if ( !isShadowMaterial )
+        material.shadowDepthWrapper = new ShadowDepthWrapper( voxelMaterial( scene, options, true ), scene, { standalone: true } )
 
     if ( textures ) {
         for ( let name in textures )
@@ -38,16 +43,21 @@ export default function voxelMaterial(
     }
 
     const worldToTexel = new Matrix()
-    const modelToTexel = Matrix.Translation( texelOriginOffset.x, texelOriginOffset.y, texelOriginOffset.z )
+    const texelToWorld = new Matrix()
+    const modelToTexel = Matrix.Translation( texelOrigin.x, texelOrigin.y, texelOrigin.z )
         .multiply( Matrix.Scaling( resolution, resolution, resolution ) )
     material.AddUniform( "worldToTexel", "mat4", undefined )
+    material.AddUniform( "texelToWorld", "mat4", undefined )
     material.AddUniform( "resolution", "float", undefined )
     material.onBindObservable.add( ( mesh ) => {
         const node = mesh.parent ?? mesh
         const effect = material.getEffect()
 
         node.getWorldMatrix().invertToRef( worldToTexel ).multiplyToRef( modelToTexel, worldToTexel )
+        worldToTexel.invertToRef( texelToWorld )
+
         effect.setMatrix( "worldToTexel", worldToTexel )
+        effect.setMatrix( "texelToWorld", texelToWorld )
         effect.setFloat( "resolution", resolution )
     } )
 
@@ -55,34 +65,39 @@ export default function voxelMaterial(
     material.specularColor = Color3.White().scale( .1 )
 
     const fragCode = voxelShaderDefinitions
-        .replace( "// @get-texel", getTexel )
         .replace( "// @get-diffuse", getDiffuse )
+        .replace( "// @get-is-occupied", getIsOccupied )
 
     material.Fragment_Definitions( fragCode )
-    material.Fragment_MainBegin( `
-    ` )
     material.Fragment_Custom_Diffuse( `
 
-        // This is necessary for the moment because shadow maps don't update vEyePosition when rendering.
-        vec4 vEyePosition2 = inverse(view) * vec4(.0, .0, .0, 1.);
-        viewDirectionW = normalize( vEyePosition2.xyz - vPositionW);
+        ${ !isShadowMaterial ? `` : `
+            // This is necessary for the moment because shadow maps don't update vEyePosition when rendering.
+            vec4 vEyePosition2 = inverse(view) * vec4(.0, .0, .0, 1.);
+            viewDirectionW = normalize( vEyePosition2.xyz - vPositionW);
+        ` }
 
         TraceResult traceResult = raytraceVoxels(vPositionW, -viewDirectionW, normalW);
-        normalW = traceResult.normal.xyz;
-        if (!traceResult.hit) discard;
-        // diffuseColor = (normalW + vec3(1.0)) / 2.0;
-        diffuseColor = getDiffuse(traceResult);
+        if (!traceResult.hit) 
+            discard;
 
-        // ivec3 cell = traceResult.cell;
-        // if ( (cell.x + cell.y + cell.z) % 2 == 0 )
-        //     diffuseColor *= .75;
+        ${ isShadowMaterial ? `` : `
+            normalW = traceResult.normal.xyz;
+            diffuseColor = getDiffuse(traceResult);
+
+            // ivec3 cell = traceResult.cell;
+            // if ( (cell.x + cell.y + cell.z) % 2 == 0 )
+            //     diffuseColor *= .75;
+        ` }
+
     `)
     material.Fragment_MainEnd( `
         // if (traceResult.error)
         //     glFragColor = vec4( 1.0, 0.0, 0.0, 1.0 );
         
         vec4 clipPos = viewProjection * vec4(traceResult.position.xyz, 1.0);
-        gl_FragDepth = (1.0 + clipPos.z / clipPos.w) / 2.0;
+        float ndcDepth = clipPos.z / clipPos.w; // in range (-1, 1)
+        gl_FragDepth = (1.0 + ndcDepth) / 2.0;  // gl_FragDepth expects range (0, 1)
     ` )
 
     return material
