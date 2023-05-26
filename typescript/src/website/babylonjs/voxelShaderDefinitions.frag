@@ -47,8 +47,6 @@ bool getIsOccupided(ivec3 pos, uint lod) {
     return true;
 }
 
-const int maxFudgeIters = 2;
-
 TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalWorld ) { //, mediump sampler3D voxels, mat4 worldToTexel) {
     TraceResult result;
 
@@ -62,74 +60,81 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
     // Offset a bit by our normal so we don't start inside a voxel.
     pos += initialNormal * .001;
 
+    ivec3 ipos = ivec3(pos);
+
     int stepIter = 0;
     bool hasEnteredVolume = false;
-    while(stepIter++ < int(texSize.x) * 3) {
+    while(stepIter++ < int(resolution) * 3) {
+
         vec3 cellMin = floor(pos);
         vec3 cellMax = cellMin + vec3(1.0);
+        vec3 dtMin = (cellMin - pos) / heading;
+        vec3 dtMax = (cellMax - pos) / heading;
+        vec3 dts = max(dtMin, dtMax);
 
-        vec3 dts;
-        float dt;
-        float fudge;
-        int fudgeIter = 0;
-        while (fudgeIter++ < maxFudgeIters) {
-            vec3 dtMin = (cellMin - pos) / heading;
-            vec3 dtMax = (cellMax - pos) / heading;
-            dts = max(dtMin, dtMax);
-            vec3 dtSort = sort3(dts);
-            dt = dtSort.x;
+        vec3 previousPos = pos;
+        pos += heading;
 
-            // Time difference between closest face and second closest face.
-            float gap = dtSort.y - dt;
+        ivec3 iposTarget = ivec3(pos);
+        ivec3 iposDelta = iposTarget - ipos;
+        vec3 currentDts = dts;
+        // Step through each x/y/z face crossed in order of time to impact.
+        for (int i = 0; i < 3; i++) {
 
-            fudge = min(0.5, gap * 0.5);
-            if (fudge < 0.0001) {
-                // Small fudge values are numerically unstable.
-                // Nudge the ray to try and break the tie.
-                pos = mix(pos, cellMin + vec3(.5, .25, .125), 0.01);
-                result.error = true;
+            // Pick the nearest face we haven't stepped through yet.
+            float minDt = min(currentDts.x, min(currentDts.y, currentDts.z));
+            if(minDt == currentDts.x) {
+                currentDts.x = 1e+15;
+                ipos.x += iposDelta.x;
+            } else if(minDt == currentDts.y) {
+                currentDts.y = 1e+15;
+                ipos.y += iposDelta.y;
+            } else if(minDt == currentDts.z) {
+                currentDts.z = 1e+15;
+                ipos.z += iposDelta.z;
             } else {
-                result.error = false;
                 break;
             }
-        }
 
-        pos += heading * (dt + fudge);
-
-        bool isOutOfBounds = 
-            pos.x < 0.0 || pos.x >= texSize.x ||
-            pos.y < 0.0 || pos.y >= texSize.y ||
-            pos.z < 0.0 || pos.z >= texSize.z;
-            
-        if(isOutOfBounds) {
-            if (hasEnteredVolume) {
-                result.hit = false;
-                return result;
+            bool isOutOfBounds = 
+                ipos.x < 0 || ipos.x >= int(texSize.x) ||
+                ipos.y < 0 || ipos.y >= int(texSize.y) ||
+                ipos.z < 0 || ipos.z >= int(texSize.z);
+                
+            if(isOutOfBounds) {
+                if (hasEnteredVolume) {
+                    result.hit = false;
+                    return result;
+                }
+                continue;
             }
-            continue;
+
+            hasEnteredVolume = true;
+
+            bool occupied = getIsOccupided(ipos, 0u);
+            if (!occupied)
+                continue;
+            
+            result.hit = true;
+            result.cell = ipos;
+
+            vec3 hitPos = previousPos + heading * minDt;
+            result.position = texelToWorld * vec4(hitPos, 1.0);
+
+            if(minDt == dts.x)
+                result.normal.x = -sign(heading.x);
+            else if(minDt == dts.y)
+                result.normal.y = -sign(heading.y);
+            else //if(dt == dts.z)
+                result.normal.z = -sign(heading.z);
+            //
+            result.normal = normalize(texelToWorld * result.normal);
+            
+            return result;
+
         }
-
-        hasEnteredVolume = true;
-
-        bool occupied = getIsOccupided(ivec3(pos), 0u);
-        if (!occupied)
-            continue;
-        
-        result.normal = vec4(0.0);
-        if(dt == dts.x)
-            result.normal.x = -sign(heading.x);
-        else if(dt == dts.y)
-            result.normal.y = -sign(heading.y);
-        else //if(dt == dts.z)
-            result.normal.z = -sign(heading.z);
-
-        result.normal = normalize(texelToWorld * result.normal);
-        result.cell = ivec3(pos);
-        result.position = texelToWorld * vec4(pos, 1.0);
-        result.hit = true;
-
-        return result;
 
     }
 
 }
+

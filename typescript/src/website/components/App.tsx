@@ -112,10 +112,10 @@ function makeVoxelChunkNode( name: string, material: Material, camera: Camera, s
             group.computeWorldMatrix( true ).invertToRef( groupToWorldMat )
             Vector3.TransformCoordinatesToRef( camera.position, groupToWorldMat, invertedVoxelMesh.position )
             invertedVoxelMesh.isVisible = true
-            // voxelBoundingMesh.isVisible = false
+            voxelBoundingMesh.isVisible = false
         } else {
             invertedVoxelMesh.isVisible = false
-            // voxelBoundingMesh.isVisible = true
+            voxelBoundingMesh.isVisible = true
         }
 
     } )
