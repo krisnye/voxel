@@ -1,7 +1,10 @@
 import { Volume } from "../../data/Volume.js";
 import { X, Y, Z } from "../../math/types.js";
 import { VoxelMaterial } from "../VoxelMaterial.js";
+import { Time } from "../types.js";
 
+//  https://www.khanacademy.org/science/physics/thermodynamics/specific-heat-and-heat-transfer/a/what-is-thermal-conductivity
+//  
 //  heat transfer equation
 //  Q / t ​= k A ΔT​ / d
 //
@@ -44,15 +47,15 @@ function calculateVoxelHeat(
 
 export function calculateHeat(
     volume: Volume<{
+        //  read
         material: Uint8Array,
         temperature: Float32Array,
+        //  write
         heat: Float32Array
     }>,
     materials: VoxelMaterial[]
 ) {
     const { size, data: { material, temperature, heat } } = volume;
-
-    console.log("Calculate Heat Transfer", size);
 
     let index = 0;
     for (let z = 0; z < size[Z]; z++) {
@@ -96,4 +99,54 @@ export function calculateHeat(
     // console.log(volume, materials);
 }
 
-//  delta dx, dy, dz
+//  Heat = Energy in Watts
+//  Watts = Power in Joules / Second
+//  Energy in Joules
+export function applyHeat(
+    volume: Volume<{
+        //  read
+        material: Uint8Array,
+        heat: Float32Array
+        //  write
+        temperature: Float32Array,
+    }>,
+    materials: VoxelMaterial[],
+    time: Time,
+) {
+    const { data: { material, temperature, heat } } = volume;
+    const length = volume.data.material.length;
+    // this is completely parallelizable.
+    for (let i = 0; i < length; i++) {
+        const voxelMaterial = materials[material[i]];
+        if (!voxelMaterial.mass) {
+            continue;
+        }
+        const voxelHeat = heat[i];
+        //  heat is power, power * time = energy
+        const heatEnergy = voxelHeat * time;
+        //  energy / heatCapacity = temperature change in kelvin
+        const temperatureChange = heatEnergy / voxelMaterial.heatCapacity;
+        temperature[i] += temperatureChange;
+    }
+}
+
+export function totalHeatEnergy(
+    volume: Volume<{
+        //  read
+        material: Uint8Array,
+        temperature: Float32Array,
+    }>,
+    materials: VoxelMaterial[],
+) {
+    const { data: { material, temperature } } = volume;
+    const length = volume.data.material.length;
+    let total = 0.0;
+    for (let i = 0; i < length; i++) {
+        const voxelMaterial = materials[material[i]];
+        if (!voxelMaterial.mass) {
+            continue;
+        }
+        total += voxelMaterial.heatCapacity * temperature[i];
+    }
+    return total;
+}
