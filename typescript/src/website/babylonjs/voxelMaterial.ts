@@ -1,30 +1,103 @@
-import { Engine, Scene, Vector3 } from "@babylonjs/core"
+import { Color3, Engine, Matrix, Node, RawTexture3D, Scene, ShadowDepthWrapper, Texture, Vector3 } from "@babylonjs/core"
 import { CustomMaterial } from "@babylonjs/materials"
 
 import _voxelShaderDefinitions from "./voxelShaderDefinitions.frag?raw"
-const voxelShaderDefinitions = _voxelShaderDefinitions
-    .replace( "#version 300 es", "" )
-    .replace( "precision highp float;", "" )
+const endDefsToken = "// @end-defs"
+const voxelShaderDefinitions = _voxelShaderDefinitions.slice( _voxelShaderDefinitions.indexOf( endDefsToken ) + endDefsToken.length )
 
-export default function voxelMaterial( scene: Scene ) {
-    const material = new CustomMaterial( "VoxelMaterial", scene )
+type VoxelMaterialOptions = {
+    getDiffuse?: string,
+    getIsOccupied?: string,
+    resolution?: number,
+    /** Given in model space. */
+    texelOrigin?: Vector3,
+    textures?: { [ key: string ]: { type: string, value: Texture } },
+}
+
+export default function voxelMaterial(
+    scene: Scene,
+    options: VoxelMaterialOptions,
+    isShadowMaterial: boolean = false
+) {
+    const {
+        getIsOccupied = "return getIsOccupided_placeHolder(pos, lod);",
+        getDiffuse = "return (traceResult.normal.xyz + vec3(1.0)) / 2.0;",
+        resolution = 200,
+        texelOrigin = new Vector3( .5, .5, .5 ),
+        textures,
+    } = options
+
+    const material = new CustomMaterial( `VoxelMaterial${ isShadowMaterial ? "_shadow" : "" }`, scene )
+
+    if ( !isShadowMaterial )
+        material.shadowDepthWrapper = new ShadowDepthWrapper( voxelMaterial( scene, options, true ), scene, { standalone: true } )
+
+    if ( textures ) {
+        for ( let name in textures )
+            material.AddUniform( name, textures[ name ].type, undefined )
+        material.onBindObservable.add( () => {
+            const effect = material.getEffect()
+            for ( let name in textures )
+                effect.setTexture( name, textures[ name ].value )
+        } )
+    }
+
+    const worldToTexel = new Matrix()
+    const texelToWorld = new Matrix()
+    const modelToTexel = Matrix.Translation( texelOrigin.x, texelOrigin.y, texelOrigin.z )
+        .multiply( Matrix.Scaling( resolution, resolution, resolution ) )
+    material.AddUniform( "worldToTexel", "mat4", undefined )
+    material.AddUniform( "texelToWorld", "mat4", undefined )
+    material.AddUniform( "resolution", "float", undefined )
+    material.onBindObservable.add( ( mesh ) => {
+        const node = mesh.parent ?? mesh
+        const effect = material.getEffect()
+
+        node.getWorldMatrix().invertToRef( worldToTexel ).multiplyToRef( modelToTexel, worldToTexel )
+        worldToTexel.invertToRef( texelToWorld )
+
+        effect.setMatrix( "worldToTexel", worldToTexel )
+        effect.setMatrix( "texelToWorld", texelToWorld )
+        effect.setFloat( "resolution", resolution )
+    } )
 
     material.alphaMode = 1
+    material.specularColor = Color3.White().scale( .1 )
 
-    material.Fragment_Definitions( voxelShaderDefinitions )
-    material.Fragment_MainBegin( `
-    ` )
+    const fragCode = voxelShaderDefinitions
+        .replace( "// @get-diffuse", getDiffuse )
+        .replace( "// @get-is-occupied", getIsOccupied )
+
+    material.Fragment_Definitions( fragCode )
     material.Fragment_Custom_Diffuse( `
-        TraceResult traceResult = raytraceVoxels(vPositionW, -viewDirectionW);
-        normalW = traceResult.normal.xyz;
-        if (!traceResult.hit)
+
+        ${ !isShadowMaterial ? `` : `
+            // This is necessary for the moment because shadow maps don't update vEyePosition when rendering.
+            vec4 vEyePosition2 = inverse(view) * vec4(.0, .0, .0, 1.);
+            viewDirectionW = normalize( vEyePosition2.xyz - vPositionW);
+        ` }
+
+        TraceResult traceResult = raytraceVoxels(vPositionW, -viewDirectionW, normalW);
+        if (!traceResult.hit) 
             discard;
-        diffuseColor = (viewDirectionW + vec3(1.0)) / 2.0;
+
+        ${ isShadowMaterial ? `` : `
+            normalW = traceResult.normal.xyz;
+            diffuseColor = getDiffuse(traceResult);
+
+            // ivec3 cell = traceResult.cell;
+            // if ( (cell.x + cell.y + cell.z) % 2 == 0 )
+            //     diffuseColor *= .75;
+        ` }
+
     `)
     material.Fragment_MainEnd( `
-        // glFragColor = vec4((viewDirectionW + vec3(1.0)) / 2.0, 1.0);
-        glFragColor = vec4((normalW + vec3(1.0)) / 2.0, 1.0);
-        // glFragColor = vec4(viewDirectionW, 1.0);
+        // if (traceResult.error)
+        //     glFragColor = vec4( 1.0, 0.0, 0.0, 1.0 );
+        
+        vec4 clipPos = viewProjection * vec4(traceResult.position.xyz, 1.0);
+        float ndcDepth = clipPos.z / clipPos.w; // in range (-1, 1)
+        gl_FragDepth = (1.0 + ndcDepth) / 2.0;  // gl_FragDepth expects range (0, 1)
     ` )
 
     return material
