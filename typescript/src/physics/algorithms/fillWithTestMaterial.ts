@@ -5,12 +5,13 @@ import { materials } from "../materials.js";
 export function fillWithTestMaterial(volume: Volume<{ material: Uint8Array }>) {
     const { size } = volume;
     //  fill bottom half with rock, top with air
-    for (let x = 0; x < size[X]; x++) {
+    let index = 0;
+    for (let z = 0; z < size[Z]; z++) {
         for (let y = 0; y < size[Y]; y++) {
-            for (let z = 0; z < size[Z]; z++) {
-                const index = volume.index(x, y, z);
-                const bottomHalf = z * 2 <= size[z];
+            for (let x = 0; x < size[X]; x++) {
+                const bottomHalf = z * 2 <= size[Z];
                 volume.data.material[index] = bottomHalf ? materials.rock.id : materials.air.id;
+                index++;
             }
         }
     }
