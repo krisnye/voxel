@@ -8,7 +8,7 @@ export type VoxelHeatCapacity = number;
 
 export interface VoxelMaterial {
     mass?: Mass;
-    conductivity: VoxelConductivity;
+    thermalResistance: VoxelConductivity;
     heatCapacity: VoxelHeatCapacity;
 }
 
@@ -16,14 +16,16 @@ function toVoxelMaterial(m: Material, length: Distance): VoxelMaterial {
     const volume = length * length * length;
     switch (m.type) {
         case Type.gas:
-            return { conductivity: 0, heatCapacity: 0};
+            return { thermalResistance: 0, heatCapacity: 0};
         case Type.solid:
         case Type.grain:
         case Type.liquid:
             const mass = m.density * volume;
+            //  see heatTranfer.ts
+            const thermalResistance = 1.0 / ( 2.0 * m.thermalConductivity * length );
             return {
                 mass,
-                conductivity: m.thermalConductivity * length / 2,
+                thermalResistance,
                 heatCapacity: mass * m.specificHeatCapacity
             };
     }

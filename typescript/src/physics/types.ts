@@ -63,6 +63,11 @@ export interface MaterialProperties {
     emission: Light;
 }
 
+/**
+ * F32: Seconds
+ */
+export type Time = number;
+
 export enum Type {
     solid = 0,
     grain = 1,
