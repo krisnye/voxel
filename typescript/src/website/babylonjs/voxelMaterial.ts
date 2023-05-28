@@ -8,6 +8,7 @@ const voxelShaderDefinitions = _voxelShaderDefinitions.slice( _voxelShaderDefini
 type VoxelMaterialOptions = {
     getDiffuse?: string,
     getIsOccupied?: string,
+    // Todo: Make resolution a Vector3.
     resolution?: number,
     maxLod?: number,
     /** Given in model space. */
@@ -55,7 +56,8 @@ export default function voxelMaterial(
     material.AddUniform( "worldToTexel", "mat4", undefined )
     material.AddUniform( "texelToWorld", "mat4", undefined )
     material.AddUniform( "resolution", "float", undefined )
-    material.AddUniform( "maxLod", "lowp uint", undefined )
+    material.AddUniform( "maxLod", "float", undefined )
+
     material.onBindObservable.add( ( mesh ) => {
         const node = mesh.parent ?? mesh
         const effect = material.getEffect()
@@ -66,7 +68,7 @@ export default function voxelMaterial(
         effect.setMatrix( "worldToTexel", worldToTexel )
         effect.setMatrix( "texelToWorld", texelToWorld )
         effect.setFloat( "resolution", resolution )
-        effect.setUInt( "maxLod", maxLod )
+        effect.setFloat( "maxLod", maxLod )
     } )
 
     material.alphaMode = 1
@@ -86,8 +88,8 @@ export default function voxelMaterial(
         ` }
 
         TraceResult traceResult = raytraceVoxels(vPositionW, -viewDirectionW, normalW);
-        if (!traceResult.hit) 
-            discard;
+        // if (!traceResult.hit) 
+        //     discard;
 
         ${ isShadowMaterial ? `` : `
             normalW = traceResult.normal.xyz;
@@ -104,7 +106,8 @@ export default function voxelMaterial(
         //     glFragColor = vec4( 1.0, 0.0, 0.0, 1.0 );
 
         // glFragColor = vec4( vec3( traceResult.voxelReads ) / 400.0, 1.0 );
-        glFragColor.rgb *= 1.0 - float(traceResult.voxelReads) / float(resolution);
+        // glFragColor.rgb *= 1.0 - float(traceResult.voxelReads) / float(resolution);
+        // glFragColor.rgb *= 1.0 - float(traceResult.voxelReads) / float(128);
         
         vec4 clipPos = viewProjection * vec4(traceResult.position.xyz, 1.0);
         float ndcDepth = clipPos.z / clipPos.w; // in range (-1, 1)

@@ -1,7 +1,7 @@
 #version 300 es
 precision highp float;
 uniform float resolution;
-uniform uint maxLod;
+uniform float maxLod;
 uniform mat4 worldToTexel;
 uniform mat4 texelToWorld;
 // @end-defs
@@ -41,25 +41,58 @@ bool getIsOccupided(ivec3 pos, uint lod) {
     return true;
 }
 
-TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalWorld ) { //, mediump sampler3D voxels, mat4 worldToTexel) {
+// Source https://gist.github.com/DomNomNom/46bb1ce47f68d255fd5d
+vec2 intersectAABB(vec3 rayOrigin, vec3 rayDir, vec3 boxMin, vec3 boxMax) {
+    vec3 tMin = (boxMin - rayOrigin) / rayDir;
+    vec3 tMax = (boxMax - rayOrigin) / rayDir;
+    vec3 t1 = min(tMin, tMax);
+    vec3 t2 = max(tMin, tMax);
+    float tNear = max(max(t1.x, t1.y), t1.z);
+    float tFar = min(min(t2.x, t2.y), t2.z);
+    return vec2(tNear, tFar);
+}
+
+TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalWorld ) {
     TraceResult result;
 
     vec3 texSize = vec3(resolution);
+    uint uMaxLod = uint(maxLod);
 
     // Convert to texel space.
     vec3 pos = multVec3(worldToTexel, posWorld, 1.0);
     vec3 initialNormal = normalize(multVec3(worldToTexel, initialNormalWorld, 0.0));
     vec3 heading = normalize( multVec3(worldToTexel, headingWorld, 0.0) );
 
+    if (getIsOccupided(ivec3(pos), 0u)) {
+        result.normal.xyz = initialNormalWorld;
+        result.position = vec4(posWorld, 1.0);
+        result.hit = true;
+        return result;
+    }
+
+    // Todo: Step to the edge of the volume before raymarching.
+    vec2 intersectTime = intersectAABB( pos, heading, vec3(0), vec3(resolution) );
+    float nearTime = intersectTime.x;
+    if (intersectTime.x > intersectTime.y) {
+        result.error = true;
+        return result;
+    }
+    if (nearTime > 1.0)
+        pos += heading * (nearTime  - .001);
+
     // Offset a bit by our normal so we don't start inside a voxel.
     pos += initialNormal * .001;
 
     ivec3 ipos = ivec3(pos);
-    uint lodLevel = 5u;
+    uint lodLevel = uMaxLod;
+
+    while (lodLevel > 0u && getIsOccupided(ipos, lodLevel))
+        lodLevel--;
 
     int stepIter = 0;
     bool hasEnteredVolume = false;
-    while(stepIter++ < int(resolution)) {
+    uint consecutiveEmpties = 0u;
+    while(stepIter++ < int(256)) {
 
         float stepSize = float(1 << lodLevel);
         vec3 displacement = heading * stepSize;
@@ -80,16 +113,16 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
         for (int i = 0; i < 3; i++) {
 
             // Pick the nearest face we haven't stepped through yet.
-            float minDt = min(currentDts.x, min(currentDts.y, currentDts.z));
-            if(minDt == currentDts.x) {
+            float dt = min(currentDts.x, min(currentDts.y, currentDts.z));
+            if(dt == currentDts.x) {
                 currentDts.x = 1e+15;
                 if (iposDelta.x == 0) continue;
                 ipos.x += iposDelta.x;
-            } else if(minDt == currentDts.y) {
+            } else if(dt == currentDts.y) {
                 currentDts.y = 1e+15;
                 if (iposDelta.y == 0) continue;
                 ipos.y += iposDelta.y;
-            } else if(minDt == currentDts.z) {
+            } else if(dt == currentDts.z) {
                 currentDts.z = 1e+15;
                 if (iposDelta.z == 0) continue;
                 ipos.z += iposDelta.z;
@@ -115,20 +148,22 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
             result.voxelReads++;
             bool occupied = getIsOccupided(ipos, lodLevel);
             if (!occupied) {
+                consecutiveEmpties++;
 
-                uint largerLod = lodLevel + 1u;
-                if (largerLod <= 5u) {
-                    bool largerLodOccupied = getIsOccupided(ipos, largerLod);
+                if (consecutiveEmpties > 8u && lodLevel + 1u <= uMaxLod) {
+                    result.voxelReads++;
+                    bool largerLodOccupied = getIsOccupided(ipos, lodLevel + 1u);
                     if (!largerLodOccupied)
-                        lodLevel = largerLod;
+                        lodLevel++;
                 }
 
                 continue;
             }
+            consecutiveEmpties = 0u;
 
             if (lodLevel > 0u) {
                 lodLevel--;
-                pos = previousPos + displacement * (minDt - .00001);
+                pos = previousPos + displacement * (dt - .001);
                 ipos = ivec3(pos);
                 break;
             }
@@ -136,12 +171,12 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
             result.hit = true;
             result.cell = ipos;
 
-            vec3 hitPos = previousPos + heading * minDt;
+            vec3 hitPos = previousPos + heading * dt;
             result.position = texelToWorld * vec4(hitPos, 1.0);
 
-            if(minDt == dts.x)
+            if(dt == dts.x)
                 result.normal.x = -sign(heading.x);
-            else if(minDt == dts.y)
+            else if(dt == dts.y)
                 result.normal.y = -sign(heading.y);
             else //if(dt == dts.z)
                 result.normal.z = -sign(heading.z);
