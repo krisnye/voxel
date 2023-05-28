@@ -1,6 +1,7 @@
 #version 300 es
 precision highp float;
 uniform float resolution;
+uniform uint maxLod;
 uniform mat4 worldToTexel;
 uniform mat4 texelToWorld;
 // @end-defs
@@ -11,15 +12,8 @@ struct TraceResult {
     vec4 normal;
     bool hit;
     bool error;
+    uint voxelReads;
 };
-
-vec3 sort3(vec3 v) {
-    // Manual bubble sort:
-    if (v.x > v.y) v.xy = v.yx;
-    if (v.y > v.z) v.yz = v.zy;
-    if (v.x > v.y) v.xy = v.yx;
-    return v;
-}
 
 vec3 multVec3(mat4 mat, vec3 v, float w) {
     return (mat * vec4(v, w)).xyz;
@@ -61,19 +55,23 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
     pos += initialNormal * .001;
 
     ivec3 ipos = ivec3(pos);
+    uint lodLevel = 5u;
 
     int stepIter = 0;
     bool hasEnteredVolume = false;
-    while(stepIter++ < int(resolution) * 3) {
+    while(stepIter++ < int(resolution)) {
 
-        vec3 cellMin = floor(pos);
-        vec3 cellMax = cellMin + vec3(1.0);
-        vec3 dtMin = (cellMin - pos) / heading;
-        vec3 dtMax = (cellMax - pos) / heading;
+        float stepSize = float(1 << lodLevel);
+        vec3 displacement = heading * stepSize;
+
+        vec3 cellMin = floor(pos / stepSize) * stepSize;
+        vec3 cellMax = cellMin + vec3(stepSize);
+        vec3 dtMin = (cellMin - pos) / displacement;
+        vec3 dtMax = (cellMax - pos) / displacement;
         vec3 dts = max(dtMin, dtMax);
 
         vec3 previousPos = pos;
-        pos += heading;
+        pos += displacement;
 
         ivec3 iposTarget = ivec3(pos);
         ivec3 iposDelta = iposTarget - ipos;
@@ -85,12 +83,15 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
             float minDt = min(currentDts.x, min(currentDts.y, currentDts.z));
             if(minDt == currentDts.x) {
                 currentDts.x = 1e+15;
+                if (iposDelta.x == 0) continue;
                 ipos.x += iposDelta.x;
             } else if(minDt == currentDts.y) {
                 currentDts.y = 1e+15;
+                if (iposDelta.y == 0) continue;
                 ipos.y += iposDelta.y;
             } else if(minDt == currentDts.z) {
                 currentDts.z = 1e+15;
+                if (iposDelta.z == 0) continue;
                 ipos.z += iposDelta.z;
             } else {
                 break;
@@ -111,9 +112,26 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
 
             hasEnteredVolume = true;
 
-            bool occupied = getIsOccupided(ipos, 0u);
-            if (!occupied)
+            result.voxelReads++;
+            bool occupied = getIsOccupided(ipos, lodLevel);
+            if (!occupied) {
+
+                uint largerLod = lodLevel + 1u;
+                if (largerLod <= 5u) {
+                    bool largerLodOccupied = getIsOccupided(ipos, largerLod);
+                    if (!largerLodOccupied)
+                        lodLevel = largerLod;
+                }
+
                 continue;
+            }
+
+            if (lodLevel > 0u) {
+                lodLevel--;
+                pos = previousPos + displacement * (minDt - .00001);
+                ipos = ivec3(pos);
+                break;
+            }
             
             result.hit = true;
             result.cell = ipos;
@@ -135,6 +153,8 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
         }
 
     }
+
+    return result;
 
 }
 
