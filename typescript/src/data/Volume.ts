@@ -46,4 +46,27 @@ export class Volume<Data extends TypedData> {
         return x + ( y + ( z * sizeY ) * sizeX );
     }
 
+    public dataToString(name: keyof TypedData) {
+        const length = 8;
+        const array = this.data[name];
+        let sb = `  ${name}:\n\n`;
+        // for (let z = 0; z < this.size[Z]; z++) {
+        // invert z because visibly, that starts at the bottom
+        for (let z = this.size[Z] - 1; z >= 0; z--) {
+            for (let y = 0; y < this.size[Y]; y++) {
+                for (let x = 0; x < this.size[X]; x++) {
+                    let valueString = array[this.index(x, y, z)].toFixed(2).slice(0, length).padStart(length, " ");
+                    sb += valueString + ",";
+                }
+                sb += "\n";
+            }
+        }
+        return sb;
+    }
+
+    toString() {
+        return `Volume${this.size}\n\n` +
+            Object.keys(this.data).map(this.dataToString.bind(this)).join("\n");
+    }
+
 }

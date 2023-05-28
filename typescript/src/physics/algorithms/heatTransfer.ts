@@ -37,7 +37,8 @@ function calculateVoxelHeat(
     if (!materialFrom.mass || !materialTo.mass) {
         return 0.0;
     }
-    const thermalResistance = 1.0 / (1.0 / materialFrom.thermalResistance + 1.0 / materialTo.thermalResistance);
+    //  resistance in series.
+    const thermalResistance = materialFrom.thermalResistance + materialTo.thermalResistance;
     //  heat transfer is directly proportional to the temperature difference.
     const temperatureDifference = temperatureFrom - temperatureTo;
     //  heat transfer is inversely proportional to thermal resistance.
@@ -143,7 +144,7 @@ export function totalHeatEnergy(
     let total = 0.0;
     for (let i = 0; i < length; i++) {
         const voxelMaterial = materials[material[i]];
-        if (!voxelMaterial.mass) {
+        if (!voxelMaterial.mass || !Number.isFinite(voxelMaterial.heatCapacity)) {
             continue;
         }
         total += voxelMaterial.heatCapacity * temperature[i];
