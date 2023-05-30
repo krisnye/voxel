@@ -16,7 +16,7 @@ export default function VoxelTestScene() {
         scene.clearColor = new Color4( 0, 0, 0, 0 )
         addDefaultLights( scene )
         const camera = defaultCamera( scene )
-        // const fxaa = new FxaaPostProcess( "fxaa", 1.0, camera )
+        const fxaa = new FxaaPostProcess( "fxaa", 1.0, camera )
 
         const voxelTexture = createVoxelTexture( scene )
         const resolution = voxelTexture.getSize().width
@@ -132,7 +132,7 @@ function createVoxelTexture( scene: Scene ) {
 
                 let freq = Math.PI * 2 * 5
                 let h = Math.sin( xn * freq ) * Math.sin( zn * freq )
-                h = .25 + .75 * h
+                h = .25 + .25 * h
                 if ( h > yn )
                     value = 1
 

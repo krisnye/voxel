@@ -87,9 +87,9 @@ export default function voxelMaterial(
             viewDirectionW = normalize( vEyePosition2.xyz - vPositionW);
         ` }
 
-        TraceResult traceResult = raytraceVoxels(vPositionW, -viewDirectionW, normalW);
-        // if (!traceResult.hit) 
-        //     discard;
+        TraceResult traceResult = raytraceVoxels(vEyePosition.xyz, -viewDirectionW, normalW);
+        if (!traceResult.hit) 
+            discard;
 
         ${ isShadowMaterial ? `` : `
             normalW = traceResult.normal.xyz;

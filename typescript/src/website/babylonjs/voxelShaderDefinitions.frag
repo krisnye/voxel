@@ -69,6 +69,8 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
         return result;
     }
 
+    vec3 startPos = pos;
+
     // Todo: Step to the edge of the volume before raymarching.
     vec2 intersectTime = intersectAABB( pos, heading, vec3(0.0), vec3(resolution) );
     float nearTime = intersectTime.x;
@@ -98,7 +100,6 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
         vec3 dtMax = (cellMax - pos) / displacement;
         vec3 dts = max(dtMin, dtMax);
 
-        ivec3 ipreviousPos = ipos;
         vec3 previousPos = pos;
         pos += displacement;
 
@@ -134,12 +135,11 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
             if(isOutOfBounds)
                 return result;
 
-
             result.voxelReads++;
             bool occupied = getIsOccupided(ipos, lodLevel);
             if (!occupied) {
                 consecutiveEmpties++;
-                if (consecutiveEmpties > 8u && lodLevel + 1u <= uMaxLod) {
+                if (consecutiveEmpties > 2u && lodLevel + 1u <= uMaxLod) {
                     result.voxelReads++;
                     bool largerLodOccupied = getIsOccupided(ipos, lodLevel + 1u);
                     if (!largerLodOccupied)
@@ -149,10 +149,12 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
             }
             consecutiveEmpties = 0u;
 
-            if (lodLevel > 0u) {
+            float dist = dot(vec3(ipos) - startPos, heading);
+            float stepViewScale = stepSize / dist;
+            if (stepViewScale > .001 && lodLevel > 0u) {
                 lodLevel--;
-                pos = previousPos;
-                ipos = ipreviousPos;
+                pos = previousPos + displacement * (dt - .001);
+                ipos = ivec3(floor(pos));
                 break;
             }
             

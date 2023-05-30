@@ -48,7 +48,7 @@ export default function buildOctreeTexture( width: number, height: number, depth
     const levels = [ level0 ] as MipLevel[]
 
     let prevLevel = level0
-    while ( prevLevel.minDimension > 4 ) {
+    while ( prevLevel.minDimension > 2 ) {
         let level = new MipLevel(
             Math.ceil( prevLevel.width / 2 ),
             Math.ceil( prevLevel.height / 2 ),
@@ -113,14 +113,6 @@ export default function buildOctreeTexture( width: number, height: number, depth
         // console.log( "Setting mip level:", levelIndex )
         // console.log( "Resolution:", level.width, level.height, level.depth )
         // console.log( "Array size: ", level.data.length )
-
-        // gl.texSubImage3D(
-        //     target, levelIndex,
-        //     0, 0, 0,
-        //     level.width, level.height, level.depth,
-        //     glformat, textureType,
-        //     level.data
-        // )
 
         gl.texImage3D(
             target, levelIndex, gl.R8UI,
