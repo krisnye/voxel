@@ -16,13 +16,15 @@ export default function VoxelTestScene() {
         scene.clearColor = new Color4( 0, 0, 0, 0 )
         addDefaultLights( scene )
         const camera = defaultCamera( scene )
-        const fxaa = new FxaaPostProcess( "fxaa", 1.0, camera )
+        // const fxaa = new FxaaPostProcess( "fxaa", 1.0, camera )
 
         const voxelTexture = createVoxelTexture( scene )
         const resolution = voxelTexture.getSize().width
         const voxelMaterialIns = voxelMaterial( scene, {
             // getIsOccupied: `return texelFetch(voxelTexture, ivec3(pos / 4), 2).r > 0u;`,
-            getIsOccupied: `return texelFetch(voxelTexture, ivec3(pos / (1 << lod)), int(lod)).r > 0u;`,
+            getIsOccupied: `
+                return texelFetch(voxelTexture, ivec3(pos / (1 << lod)), int(lod)).r > 0u;
+            `,
             // getIsOccupied: `return textureLod(voxelTexture, vec3(pos) / resolution, float(lod)).r > 0u;`,
             getDiffuse: `
                 vec3 normal = traceResult.normal.xyz;
@@ -120,6 +122,9 @@ function createVoxelTexture( scene: Scene ) {
         for ( let y = 0; y < height; y++ ) {
             for ( let x = 0; x < width; x++ ) {
                 let value = 0
+
+                // if ( x == z && y == 0 )
+                //     value = 1
 
                 let xn = x / width
                 let yn = y / height

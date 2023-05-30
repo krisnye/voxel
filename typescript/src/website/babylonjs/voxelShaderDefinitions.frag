@@ -60,7 +60,6 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
 
     // Convert to texel space.
     vec3 pos = multVec3(worldToTexel, posWorld, 1.0);
-    vec3 initialNormal = normalize(multVec3(worldToTexel, initialNormalWorld, 0.0));
     vec3 heading = normalize( multVec3(worldToTexel, headingWorld, 0.0) );
 
     if (getIsOccupided(ivec3(pos), 0u)) {
@@ -71,7 +70,7 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
     }
 
     // Todo: Step to the edge of the volume before raymarching.
-    vec2 intersectTime = intersectAABB( pos, heading, vec3(0), vec3(resolution) );
+    vec2 intersectTime = intersectAABB( pos, heading, vec3(0.0), vec3(resolution) );
     float nearTime = intersectTime.x;
     if (intersectTime.x > intersectTime.y) {
         result.error = true;
@@ -80,17 +79,13 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
     if (nearTime > 1.0)
         pos += heading * (nearTime  - .001);
 
-    // Offset a bit by our normal so we don't start inside a voxel.
-    pos += initialNormal * .001;
-
-    ivec3 ipos = ivec3(pos);
+    ivec3 ipos = ivec3(floor(pos));
     uint lodLevel = uMaxLod;
 
     while (lodLevel > 0u && getIsOccupided(ipos, lodLevel))
         lodLevel--;
 
     int stepIter = 0;
-    bool hasEnteredVolume = false;
     uint consecutiveEmpties = 0u;
     while(stepIter++ < int(256)) {
 
@@ -103,10 +98,11 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
         vec3 dtMax = (cellMax - pos) / displacement;
         vec3 dts = max(dtMin, dtMax);
 
+        ivec3 ipreviousPos = ipos;
         vec3 previousPos = pos;
         pos += displacement;
 
-        ivec3 iposTarget = ivec3(pos);
+        ivec3 iposTarget = ivec3(floor(pos));
         ivec3 iposDelta = iposTarget - ipos;
         vec3 currentDts = dts;
         // Step through each x/y/z face crossed in order of time to impact.
@@ -135,36 +131,28 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
                 ipos.y < 0 || ipos.y >= int(texSize.y) ||
                 ipos.z < 0 || ipos.z >= int(texSize.z);
                 
-            if(isOutOfBounds) {
-                if (hasEnteredVolume) {
-                    result.hit = false;
-                    return result;
-                }
-                continue;
-            }
+            if(isOutOfBounds)
+                return result;
 
-            hasEnteredVolume = true;
 
             result.voxelReads++;
             bool occupied = getIsOccupided(ipos, lodLevel);
             if (!occupied) {
                 consecutiveEmpties++;
-
                 if (consecutiveEmpties > 8u && lodLevel + 1u <= uMaxLod) {
                     result.voxelReads++;
                     bool largerLodOccupied = getIsOccupided(ipos, lodLevel + 1u);
                     if (!largerLodOccupied)
                         lodLevel++;
                 }
-
                 continue;
             }
             consecutiveEmpties = 0u;
 
             if (lodLevel > 0u) {
                 lodLevel--;
-                pos = previousPos + displacement * (dt - .001);
-                ipos = ivec3(pos);
+                pos = previousPos;
+                ipos = ipreviousPos;
                 break;
             }
             
