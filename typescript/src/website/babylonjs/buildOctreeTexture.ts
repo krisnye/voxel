@@ -5,7 +5,7 @@ type DataArray = {
     get length(): number
 }
 
-class MipLevel {
+class OctreeLevel {
     constructor(
         public readonly width: number,
         public readonly height: number,
@@ -40,16 +40,16 @@ class MipLevel {
     }
 }
 
-export default function buildOctreeTexture( width: number, height: number, depth: number, data: DataArray, emptyValue: number, scene: Scene ) {
-    const level0 = new MipLevel( width, height, depth )
+export function getOctreeLevels( width: number, height: number, depth: number, data: DataArray, emptyValue: number ) {
+    const level0 = new OctreeLevel( width, height, depth )
     for ( let i = 0; i < data.length; i++ )
         level0.data[ i ] = data[ i ] == emptyValue ? 0 : 1
 
-    const levels = [ level0 ] as MipLevel[]
+    const levels = [ level0 ] as OctreeLevel[]
 
     let prevLevel = level0
     while ( prevLevel.minDimension > 4 ) {
-        let level = new MipLevel(
+        let level = new OctreeLevel(
             Math.ceil( prevLevel.width / 2 ),
             Math.ceil( prevLevel.height / 2 ),
             Math.ceil( prevLevel.depth / 2 ),
@@ -74,6 +74,13 @@ export default function buildOctreeTexture( width: number, height: number, depth
         levels.push( level )
         prevLevel = level
     }
+
+    return levels
+}
+
+export default function buildOctreeTexture( width: number, height: number, depth: number, data: DataArray, emptyValue: number, scene: Scene ) {
+    const levels = getOctreeLevels( width, height, depth, data, emptyValue )
+    const level0 = levels[ 0 ]
 
     // console.log( "Generated", levels.length, "levels." )
 
