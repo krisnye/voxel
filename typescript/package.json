@@ -10,23 +10,31 @@
     "build": "vite build && tsc --preserveWatchOutput",
     "preview": "vite preview",
     "test": "gtest lib",
+    "lint": "eslint --fix",
     "watch": "run-p watch:*",
     "watch:vite": "vite --port 8080 --no-clearScreen",
     "watch:tsc": "tsc -w --preserveWatchOutput",
     "watch:test": "nodemon -w lib -w src -w external -e js,ts,is,ion --delay 200ms -x npm run test"
   },
   "dependencies": {
-    "preact": "^10.13.1",
     "@babylonjs/core": "6.4.1",
-    "@babylonjs/materials": "6.4.1"
+    "@babylonjs/materials": "6.4.1",
+    "preact": "^10.13.1"
   },
   "devDependencies": {
-    "@glas/test": "^1.0.5",
+    "@glas/test": "^1.0.6",
     "@preact/preset-vite": "^2.5.0",
     "@types/node": "^20.1.2",
+    "@typescript-eslint/eslint-plugin": "^5.59.7",
+    "eslint": "^8.41.0",
+    "eslint-config-standard-with-typescript": "^34.0.1",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-n": "^15.7.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "eslint-plugin-react": "^7.32.2",
     "nodemon": "^2.0.22",
     "npm-run-all": "^4.1.5",
-    "typescript": "^5.0.2",
+    "typescript": "^5.0.4",
     "vite": "^4.3.2"
   }
 }
