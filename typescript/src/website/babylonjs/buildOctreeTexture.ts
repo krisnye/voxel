@@ -48,7 +48,7 @@ export default function buildOctreeTexture( width: number, height: number, depth
     const levels = [ level0 ] as MipLevel[]
 
     let prevLevel = level0
-    while ( prevLevel.minDimension > 2 ) {
+    while ( prevLevel.minDimension > 4 ) {
         let level = new MipLevel(
             Math.ceil( prevLevel.width / 2 ),
             Math.ceil( prevLevel.height / 2 ),

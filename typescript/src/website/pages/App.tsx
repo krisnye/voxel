@@ -1,8 +1,9 @@
 import { pages } from ".";
-import { useLocalStorage } from "../hooks/useLocalStorage";
+import useHashState from "../hooks/useHashState";
 
 export function App() {
-    const [page, setPage] = useLocalStorage<keyof typeof pages | null>("page", null);
+    const [page, setPage] = useHashState(undefined);
+    console.log(page)
     if (page) {
         return pages[page].component();
     }

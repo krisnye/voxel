@@ -103,9 +103,9 @@ export default function VoxelTestScene() {
 }
 
 function createVoxelTexture( scene: Scene ) {
-    const width = 1024
+    const width = 256
     const height = 256
-    const depth = 1024
+    const depth = 256
     const half = width / 2
 
     function hypot3( x: number, y: number, z: number ) {
