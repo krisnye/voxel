@@ -1,19 +1,21 @@
 import { useState } from "preact/hooks";
 import { pages } from ".";
+import useHashState from "../hooks/useHashState";
 
 export function App() {
-    const [page, setPage] = useState<keyof typeof pages | null>(null);
-    if (page) {
-        return pages[page].component();
+    const [ page, setPage ] = useHashState( undefined );
+    console.log( page )
+    if ( page ) {
+        return pages[ page ].component();
     }
     return <div>
         <p>{page}</p>
         {
-            Object.entries(pages).map(([name, page]) => (
+            Object.entries( pages ).map( ( [ name, page ] ) => (
                 <div style={{ cursor: "pointer" }} onClick={() => {
-                    setPage(name);
+                    setPage( name );
                 }}>{page.name}</div>
-            ))
+            ) )
         }
     </div>
 }
