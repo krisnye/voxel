@@ -1,8 +1,8 @@
-import { useState } from "preact/hooks";
 import { pages } from ".";
+import { useLocalStorage } from "../hooks/useLocalStorage";
 
 export function App() {
-    const [page, setPage] = useState<keyof typeof pages | null>(null);
+    const [page, setPage] = useLocalStorage<keyof typeof pages | null>("page", null);
     if (page) {
         return pages[page].component();
     }
