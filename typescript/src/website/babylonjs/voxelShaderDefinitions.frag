@@ -150,8 +150,8 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
             consecutiveEmpties = 0u;
 
             float dist = dot(vec3(ipos) - startPos, heading);
-            float stepViewScale = stepSize / dist;
-            if (stepViewScale > .001 && lodLevel > 0u) {
+            float lodFactor = .0025; // Todo: Pull this out into a uniform.
+            if (stepSize > dist * lodFactor && lodLevel > 0u) {
                 lodLevel--;
                 pos = previousPos + displacement * (dt - .001);
                 ipos = ivec3(floor(pos));
