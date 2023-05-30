@@ -16,5 +16,5 @@ export const pages: Record<string, Page> = Object.fromEntries(Object.entries({
         name: "Kody",
         component: KodyPage,
     },
-}).filter(([id, page]) => import.meta.env.DEV));
+}));
 
