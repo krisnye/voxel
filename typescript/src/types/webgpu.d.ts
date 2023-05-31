@@ -61,7 +61,8 @@ type GPUBindingResource =
     | GPUSampler
     | GPUTextureView
     | GPUBufferBinding
-    | GPUExternalTexture;
+    | GPUExternalTexture
+    | { buffer: output };   //  added by knye
 type GPUBufferDynamicOffset =
     number;
 type GPUBufferUsageFlags =
@@ -1632,7 +1633,7 @@ interface GPUDebugCommandsMixin {
 }
 
 interface GPUObjectBase {
-    label: string;
+    label?: string;
 }
 
 interface GPUPipelineBase {
@@ -1752,7 +1753,7 @@ interface GPU {
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPU";
+    // readonly __brand: "GPU";
     /**
      * Requests an adapter from the user agent.
      * The user agent chooses whether to return an adapter, and, if so,
@@ -1787,7 +1788,7 @@ interface GPUAdapter {
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUAdapter";
+    // readonly __brand: "GPUAdapter";
     /**
      * The set of values in `this`.{@link GPUAdapter#[[adapter]]}.{@link adapter#[[features]]}.
      */
@@ -1834,7 +1835,7 @@ interface GPUAdapterInfo {
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUAdapterInfo";
+    // readonly __brand: "GPUAdapterInfo";
     /**
      * The name of the vendor of the adapter, if available. Empty string otherwise.
      */
@@ -1873,7 +1874,7 @@ interface GPUBindGroup
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUBindGroup";
+    // readonly __brand: "GPUBindGroup";
 }
 
 declare var GPUBindGroup: {
@@ -1888,7 +1889,7 @@ interface GPUBindGroupLayout
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUBindGroupLayout";
+    // readonly __brand: "GPUBindGroupLayout";
 }
 
 declare var GPUBindGroupLayout: {
@@ -1903,7 +1904,7 @@ interface GPUBuffer
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUBuffer";
+    // readonly __brand: "GPUBuffer";
     readonly size: GPUSize64;
     readonly usage: GPUBufferUsageFlags;
     readonly mapState: GPUBufferMapState;
@@ -1962,7 +1963,7 @@ interface GPUCanvasContext {
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUCanvasContext";
+    // readonly __brand: "GPUCanvasContext";
     /**
      * The canvas this context was created from.
      */
@@ -2003,7 +2004,7 @@ interface GPUCommandBuffer
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUCommandBuffer";
+    // readonly __brand: "GPUCommandBuffer";
 }
 
 declare var GPUCommandBuffer: {
@@ -2020,7 +2021,7 @@ interface GPUCommandEncoder
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUCommandEncoder";
+    // readonly __brand: "GPUCommandEncoder";
     /**
      * Begins encoding a render pass described by `descriptor`.
      * @param descriptor - Description of the {@link GPURenderPassEncoder} to create.
@@ -2144,7 +2145,7 @@ interface GPUCompilationInfo {
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUCompilationInfo";
+    // readonly __brand: "GPUCompilationInfo";
     readonly messages: ReadonlyArray<GPUCompilationMessage>;
 }
 
@@ -2159,7 +2160,7 @@ interface GPUCompilationMessage {
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUCompilationMessage";
+    // readonly __brand: "GPUCompilationMessage";
     /**
      * The human-readable, localizable text for this compilation message.
      * Note: The {@link GPUCompilationMessage#message} should follow the best practices for language
@@ -2227,7 +2228,7 @@ interface GPUComputePassEncoder
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUComputePassEncoder";
+    // readonly __brand: "GPUComputePassEncoder";
     /**
      * Sets the current {@link GPUComputePipeline}.
      * @param pipeline - The compute pipeline to use for subsequent dispatch commands.
@@ -2280,7 +2281,7 @@ interface GPUComputePipeline
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUComputePipeline";
+    // readonly __brand: "GPUComputePipeline";
 }
 
 declare var GPUComputePipeline: {
@@ -2296,7 +2297,7 @@ interface GPUDevice
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUDevice";
+    // readonly __brand: "GPUDevice";
     /**
      * A set containing the {@link GPUFeatureName} values of the features
      * supported by the device (i.e. the ones with which it was created).
@@ -2473,7 +2474,7 @@ interface GPUDeviceLostInfo {
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUDeviceLostInfo";
+    // readonly __brand: "GPUDeviceLostInfo";
     readonly reason: GPUDeviceLostReason;
     readonly message: string;
 }
@@ -2514,7 +2515,7 @@ interface GPUExternalTexture
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUExternalTexture";
+    // readonly __brand: "GPUExternalTexture";
 }
 
 declare var GPUExternalTexture: {
@@ -2529,7 +2530,7 @@ interface GPUInternalError
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUInternalError";
+    // readonly __brand: "GPUInternalError";
 }
 
 declare var GPUInternalError: {
@@ -2546,7 +2547,7 @@ interface GPUOutOfMemoryError
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUOutOfMemoryError";
+    // readonly __brand: "GPUOutOfMemoryError";
 }
 
 declare var GPUOutOfMemoryError: {
@@ -2563,7 +2564,7 @@ interface GPUPipelineError
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUPipelineError";
+    // readonly __brand: "GPUPipelineError";
     /**
      * A read-only slot-backed attribute exposing the type of error encountered in pipeline creation
      * as a <dfn enum for=>GPUPipelineErrorReason</dfn>:
@@ -2592,7 +2593,7 @@ interface GPUPipelineLayout
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUPipelineLayout";
+    // readonly __brand: "GPUPipelineLayout";
 }
 
 declare var GPUPipelineLayout: {
@@ -2607,7 +2608,7 @@ interface GPUQuerySet
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUQuerySet";
+    // readonly __brand: "GPUQuerySet";
     /**
      * Destroys the {@link GPUQuerySet}.
      */
@@ -2634,7 +2635,7 @@ interface GPUQueue
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUQueue";
+    // readonly __brand: "GPUQueue";
     /**
      * Schedules the execution of the command buffers by the GPU on this queue.
      * Submitted command buffers cannot be used again.
@@ -2718,7 +2719,7 @@ interface GPURenderBundle
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPURenderBundle";
+    // readonly __brand: "GPURenderBundle";
 }
 
 declare var GPURenderBundle: {
@@ -2737,7 +2738,7 @@ interface GPURenderBundleEncoder
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPURenderBundleEncoder";
+    // readonly __brand: "GPURenderBundleEncoder";
     /**
      * Completes recording of the render bundle commands sequence.
      * 	descriptor:
@@ -2763,7 +2764,7 @@ interface GPURenderPassEncoder
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPURenderPassEncoder";
+    // readonly __brand: "GPURenderPassEncoder";
     /**
      * Sets the viewport used during the rasterization stage to linearly map from normalized device
      * coordinates to viewport coordinates.
@@ -2855,7 +2856,7 @@ interface GPURenderPipeline
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPURenderPipeline";
+    // readonly __brand: "GPURenderPipeline";
 }
 
 declare var GPURenderPipeline: {
@@ -2870,7 +2871,7 @@ interface GPUSampler
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUSampler";
+    // readonly __brand: "GPUSampler";
 }
 
 declare var GPUSampler: {
@@ -2885,7 +2886,7 @@ interface GPUShaderModule
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUShaderModule";
+    // readonly __brand: "GPUShaderModule";
     /**
      * Returns any messages generated during the {@link GPUShaderModule}'s compilation.
      * The locations, order, and contents of messages are implementation-defined.
@@ -2908,7 +2909,7 @@ interface GPUSupportedLimits {
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUSupportedLimits";
+    // readonly __brand: "GPUSupportedLimits";
     readonly maxTextureDimension1D: number;
     readonly maxTextureDimension2D: number;
     readonly maxTextureDimension3D: number;
@@ -2954,7 +2955,7 @@ interface GPUTexture
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUTexture";
+    // readonly __brand: "GPUTexture";
     /**
      * Creates a {@link GPUTextureView}.
      * @param descriptor - Description of the {@link GPUTextureView} to create.
@@ -3012,7 +3013,7 @@ interface GPUTextureView
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUTextureView";
+    // readonly __brand: "GPUTextureView";
 }
 
 declare var GPUTextureView: {
@@ -3027,7 +3028,7 @@ interface GPUUncapturedErrorEvent
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUUncapturedErrorEvent";
+    // readonly __brand: "GPUUncapturedErrorEvent";
     /**
      * A slot-backed attribute holding an object representing the error that was uncaptured.
      * This has the same type as errors returned by {@link GPUDevice#popErrorScope}.
@@ -3050,7 +3051,7 @@ interface GPUValidationError
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUValidationError";
+    // readonly __brand: "GPUValidationError";
 }
 
 declare var GPUValidationError: {
@@ -3075,7 +3076,7 @@ interface GPUBufferUsage {
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUBufferUsage";
+    // readonly __brand: "GPUBufferUsage";
     readonly MAP_READ: GPUFlagsConstant;
     readonly MAP_WRITE: GPUFlagsConstant;
     readonly COPY_SRC: GPUFlagsConstant;
@@ -3108,7 +3109,7 @@ interface GPUColorWrite {
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUColorWrite";
+    // readonly __brand: "GPUColorWrite";
     readonly RED: GPUFlagsConstant;
     readonly GREEN: GPUFlagsConstant;
     readonly BLUE: GPUFlagsConstant;
@@ -3131,7 +3132,7 @@ interface GPUMapMode {
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUMapMode";
+    // readonly __brand: "GPUMapMode";
     readonly READ: GPUFlagsConstant;
     readonly WRITE: GPUFlagsConstant;
 }
@@ -3149,7 +3150,7 @@ interface GPUShaderStage {
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUShaderStage";
+    // readonly __brand: "GPUShaderStage";
     readonly VERTEX: GPUFlagsConstant;
     readonly FRAGMENT: GPUFlagsConstant;
     readonly COMPUTE: GPUFlagsConstant;
@@ -3168,7 +3169,7 @@ interface GPUTextureUsage {
      * https://github.com/microsoft/TypeScript/pull/33038
      * @internal
      */
-    readonly __brand: "GPUTextureUsage";
+    // readonly __brand: "GPUTextureUsage";
     readonly COPY_SRC: GPUFlagsConstant;
     readonly COPY_DST: GPUFlagsConstant;
     readonly TEXTURE_BINDING: GPUFlagsConstant;

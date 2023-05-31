@@ -1,5 +1,12 @@
 import { VoxelMaterial } from "../../../VoxelMaterial.js";
 import { HeatTransferVolumeType } from "../algorithms.test.js";
+import "../../../../types/webgpu.js";
+
+declare global {
+    interface GPUDevice {
+        foo(): boolean;
+    }
+}
 
 export async function webGPU(v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number) {
     // init here.
