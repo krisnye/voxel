@@ -33,7 +33,7 @@ export type Mass = number;
 /**
  * F32: ?
  */
- export type Viscosity = number;
+export type Viscosity = number;
 
 /**
  * HDR Lighting components, units not specified yet.

@@ -12,11 +12,11 @@ export interface VoxelMaterial {
     heatCapacity: VoxelHeatCapacity;
 }
 
-function toVoxelMaterial(m: Material, length: Distance): VoxelMaterial {
+function toVoxelMaterial( m: Material, length: Distance ): VoxelMaterial {
     const volume = length * length * length;
-    switch (m.type) {
+    switch ( m.type ) {
         case Type.gas:
-            return { thermalResistance: 0, heatCapacity: 0};
+            return { thermalResistance: 0, heatCapacity: 0 };
         case Type.solid:
         case Type.grain:
         case Type.liquid:
@@ -31,6 +31,6 @@ function toVoxelMaterial(m: Material, length: Distance): VoxelMaterial {
     }
 }
 
-export function toVoxelMaterials(materials: Material[], length: Distance): VoxelMaterial[] {
-    return materials.map(material => toVoxelMaterial(material, length));
+export function toVoxelMaterials( materials: Material[], length: Distance ): VoxelMaterial[] {
+    return materials.map( material => toVoxelMaterial( material, length ) );
 }

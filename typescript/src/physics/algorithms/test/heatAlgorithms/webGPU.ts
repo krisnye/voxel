@@ -8,19 +8,19 @@ declare global {
     }
 }
 
-export async function webGPU(v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number) {
+export async function webGPU( v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number ) {
     // init here.
-    if (!globalThis.navigator) {
+    if ( !globalThis.navigator ) {
         return null;
         // throw new Error(`Not in browser`);
     }
-    if (!navigator.gpu) {
+    if ( !navigator.gpu ) {
         return null;
         // throw Error("WebGPU not supported.");
     }
 
     const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter) {
+    if ( !adapter ) {
         return null;
         // throw Error("Couldn't request WebGPU adapter.");
     }
@@ -42,7 +42,7 @@ fn main(
   local_id : vec3u,
 ) {
   // Avoid accessing the buffer out of bounds
-//   if (global_id.x >= ${BUFFER_SIZE}) {
+//   if (global_id.x >= ${ BUFFER_SIZE }) {
 //     return;
 //   }
 
@@ -51,21 +51,21 @@ fn main(
 }
 `
 
-    const shaderModule = device.createShaderModule({
+    const shaderModule = device.createShaderModule( {
         code: shader,
-    });
+    } );
 
-    const output = device.createBuffer({
+    const output = device.createBuffer( {
         size: BUFFER_SIZE,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-    });
+    } );
 
-    const stagingBuffer = device.createBuffer({
+    const stagingBuffer = device.createBuffer( {
         size: BUFFER_SIZE,
         usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
-    });
+    } );
 
-    const bindGroupLayout = device.createBindGroupLayout({
+    const bindGroupLayout = device.createBindGroupLayout( {
         entries: [
             {
                 binding: 0,
@@ -75,9 +75,9 @@ fn main(
                 },
             },
         ],
-    });
+    } );
 
-    const bindGroup = device.createBindGroup({
+    const bindGroup = device.createBindGroup( {
         layout: bindGroupLayout,
         entries: [
             {
@@ -87,23 +87,23 @@ fn main(
                 },
             },
         ],
-    });
+    } );
 
-    const computePipeline = device.createComputePipeline({
-        layout: device.createPipelineLayout({
-            bindGroupLayouts: [bindGroupLayout],
-        }),
+    const computePipeline = device.createComputePipeline( {
+        layout: device.createPipelineLayout( {
+            bindGroupLayouts: [ bindGroupLayout ],
+        } ),
         compute: {
             module: shaderModule,
             entryPoint: "main",
         },
-    });
+    } );
 
     const commandEncoder = device.createCommandEncoder();
     const passEncoder = commandEncoder.beginComputePass();
-    passEncoder.setPipeline(computePipeline);
-    passEncoder.setBindGroup(0, bindGroup);
-    passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE / 64));
+    passEncoder.setPipeline( computePipeline );
+    passEncoder.setBindGroup( 0, bindGroup );
+    passEncoder.dispatchWorkgroups( Math.ceil( BUFFER_SIZE / 64 ) );
     passEncoder.end();
 
     // Copy output buffer to staging buffer
@@ -116,7 +116,7 @@ fn main(
     );
 
     // End frame by passing array of command buffers to command queue for execution
-    device.queue.submit([commandEncoder.finish()]);
+    device.queue.submit( [ commandEncoder.finish() ] );
 
     // map staging buffer to read results back to JS
     await stagingBuffer.mapAsync(
@@ -125,15 +125,15 @@ fn main(
         BUFFER_SIZE // Length
     );
 
-    const copyArrayBuffer = stagingBuffer.getMappedRange(0, BUFFER_SIZE);
-    const data = copyArrayBuffer.slice(0);
+    const copyArrayBuffer = stagingBuffer.getMappedRange( 0, BUFFER_SIZE );
+    const data = copyArrayBuffer.slice( 0 );
     stagingBuffer.unmap();
-    console.log(new Float32Array(data));
+    console.log( new Float32Array( data ) );
 
-    console.log({ device, shaderModule, output, stagingBuffer, bindGroupLayout, bindGroup, computePipeline, commandEncoder, passEncoder });
+    console.log( { device, shaderModule, output, stagingBuffer, bindGroupLayout, bindGroup, computePipeline, commandEncoder, passEncoder } );
 
     return async () => {
-        console.log("HELLO WEBGPU");
+        console.log( "HELLO WEBGPU" );
     }
 
 }
