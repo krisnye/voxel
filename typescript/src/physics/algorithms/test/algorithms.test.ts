@@ -16,7 +16,7 @@ export type HeatTransferVolumeType = Volume<{
     heat: Float32Array;
 }>;
 
-export type TestAlgorithm = (v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number) => Promise<() => Promise<void>>;
+export type TestAlgorithm = (v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number) => null | Promise<() => Promise<void>>;
 
 export async function runTests() {
     const timeStep = 1 / 30;
@@ -33,6 +33,10 @@ export async function runTests() {
     for (const [name, algorithm] of Object.entries(algorithms)) {
         resetVolume();
         const runOnce = await algorithm(volume, decimeterVoxelMaterials, timeStep);
+        if (!runOnce) {
+            console.log(`############## ${name} => Skipping ##############\n`);
+            continue;
+        }
         const start = performance.now();
         for (let i = 0; i < iterations; i++) {
             await runOnce();
