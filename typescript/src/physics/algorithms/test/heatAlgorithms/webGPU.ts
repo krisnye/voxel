@@ -4,15 +4,18 @@ import { HeatTransferVolumeType } from "../algorithms.test.js";
 export async function webGPU(v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number) {
     // init here.
     if (!globalThis.navigator) {
-        throw new Error(`Not in browser`);
+        return null;
+        // throw new Error(`Not in browser`);
     }
     if (!navigator.gpu) {
-        throw Error("WebGPU not supported.");
+        return null;
+        // throw Error("WebGPU not supported.");
     }
 
     const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) {
-        throw Error("Couldn't request WebGPU adapter.");
+        return null;
+        // throw Error("Couldn't request WebGPU adapter.");
     }
 
     const device = await adapter.requestDevice();
@@ -116,7 +119,7 @@ fn main(
     );
 
     const copyArrayBuffer = stagingBuffer.getMappedRange(0, BUFFER_SIZE);
-    const data = copyArrayBuffer.slice();
+    const data = copyArrayBuffer.slice(0);
     stagingBuffer.unmap();
     console.log(new Float32Array(data));
 
