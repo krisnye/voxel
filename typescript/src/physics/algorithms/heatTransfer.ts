@@ -32,9 +32,9 @@ function calculateVoxelHeat(
     temperatureTo: number,
     materials: VoxelMaterial[],
 ) {
-    const materialFrom = materials[materialIdFrom];
-    const materialTo = materials[materialIdTo];
-    if (!materialFrom.mass || !materialTo.mass) {
+    const materialFrom = materials[ materialIdFrom ];
+    const materialTo = materials[ materialIdTo ];
+    if ( !materialFrom.mass || !materialTo.mass ) {
         return 0.0;
     }
     //  resistance in series.
@@ -59,38 +59,38 @@ export function calculateHeat(
     const { size, data: { material, temperature, heat } } = volume;
 
     let index = 0;
-    for (let z = 0; z < size[Z]; z++) {
-        for (let y = 0; y < size[Y]; y++) {
-            for (let x = 0; x < size[X]; x++) {
-                const materialIdTo = material[index];
-                const temperatureTo = temperature[index];
+    for ( let z = 0; z < size[ Z ]; z++ ) {
+        for ( let y = 0; y < size[ Y ]; y++ ) {
+            for ( let x = 0; x < size[ X ]; x++ ) {
+                const materialIdTo = material[ index ];
+                const temperatureTo = temperature[ index ];
                 let totalHeat = 0.0;
-                if (x > 0) {
+                if ( x > 0 ) {
                     const fromIndex = index - 1;
-                    totalHeat += calculateVoxelHeat(material[fromIndex], temperature[fromIndex], materialIdTo, temperatureTo, materials);
+                    totalHeat += calculateVoxelHeat( material[ fromIndex ], temperature[ fromIndex ], materialIdTo, temperatureTo, materials );
                 }
-                if (x + 1 < size[X]) {
+                if ( x + 1 < size[ X ] ) {
                     const fromIndex = index + 1;
-                    totalHeat += calculateVoxelHeat(material[fromIndex], temperature[fromIndex], materialIdTo, temperatureTo, materials);
+                    totalHeat += calculateVoxelHeat( material[ fromIndex ], temperature[ fromIndex ], materialIdTo, temperatureTo, materials );
                 }
-                if (y > 0) {
-                    const fromIndex = index - size[X];
-                    totalHeat += calculateVoxelHeat(material[fromIndex], temperature[fromIndex], materialIdTo, temperatureTo, materials);
+                if ( y > 0 ) {
+                    const fromIndex = index - size[ X ];
+                    totalHeat += calculateVoxelHeat( material[ fromIndex ], temperature[ fromIndex ], materialIdTo, temperatureTo, materials );
                 }
-                if (y + 1 < size[Y]) {
-                    const fromIndex = index + size[X];
-                    totalHeat += calculateVoxelHeat(material[fromIndex], temperature[fromIndex], materialIdTo, temperatureTo, materials);
+                if ( y + 1 < size[ Y ] ) {
+                    const fromIndex = index + size[ X ];
+                    totalHeat += calculateVoxelHeat( material[ fromIndex ], temperature[ fromIndex ], materialIdTo, temperatureTo, materials );
                 }
-                if (z > 0) {
-                    const fromIndex = index - size[X] * size[Y];
-                    totalHeat += calculateVoxelHeat(material[fromIndex], temperature[fromIndex], materialIdTo, temperatureTo, materials);
+                if ( z > 0 ) {
+                    const fromIndex = index - size[ X ] * size[ Y ];
+                    totalHeat += calculateVoxelHeat( material[ fromIndex ], temperature[ fromIndex ], materialIdTo, temperatureTo, materials );
                 }
-                if (z + 1 < size[Z]) {
-                    const fromIndex = index + size[X] * size[Y];
-                    totalHeat += calculateVoxelHeat(material[fromIndex], temperature[fromIndex], materialIdTo, temperatureTo, materials);
+                if ( z + 1 < size[ Z ] ) {
+                    const fromIndex = index + size[ X ] * size[ Y ];
+                    totalHeat += calculateVoxelHeat( material[ fromIndex ], temperature[ fromIndex ], materialIdTo, temperatureTo, materials );
                 }
                 // finally, write the total heat output
-                heat[index] = totalHeat;
+                heat[ index ] = totalHeat;
                 index++;    //  we know we are iterating in linear manner by using z, y, x for loops
             }
         }
@@ -117,17 +117,17 @@ export function applyHeat(
     const { data: { material, temperature, heat } } = volume;
     const length = volume.data.material.length;
     // this is completely parallelizable.
-    for (let i = 0; i < length; i++) {
-        const voxelMaterial = materials[material[i]];
-        if (!voxelMaterial.mass) {
+    for ( let i = 0; i < length; i++ ) {
+        const voxelMaterial = materials[ material[ i ] ];
+        if ( !voxelMaterial.mass ) {
             continue;
         }
-        const voxelHeat = heat[i];
+        const voxelHeat = heat[ i ];
         //  heat is power, power * time = energy
         const heatEnergy = voxelHeat * time;
         //  energy / heatCapacity = temperature change in kelvin
         const temperatureChange = heatEnergy / voxelMaterial.heatCapacity;
-        temperature[i] += temperatureChange;
+        temperature[ i ] += temperatureChange;
     }
 }
 
@@ -142,12 +142,12 @@ export function totalHeatEnergy(
     const { data: { material, temperature } } = volume;
     const length = volume.data.material.length;
     let total = 0.0;
-    for (let i = 0; i < length; i++) {
-        const voxelMaterial = materials[material[i]];
-        if (!voxelMaterial.mass || !Number.isFinite(voxelMaterial.heatCapacity)) {
+    for ( let i = 0; i < length; i++ ) {
+        const voxelMaterial = materials[ material[ i ] ];
+        if ( !voxelMaterial.mass || !Number.isFinite( voxelMaterial.heatCapacity ) ) {
             continue;
         }
-        total += voxelMaterial.heatCapacity * temperature[i];
+        total += voxelMaterial.heatCapacity * temperature[ i ];
     }
     return total;
 }

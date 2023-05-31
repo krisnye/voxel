@@ -2455,10 +2455,10 @@ interface GPUDevice
      * An event handler IDL attribute for the {@link GPUDevice#uncapturederror} event type.
      */
     onuncapturederror:
-    | ((
+    | ( (
         this: GPUDevice,
         ev: GPUUncapturedErrorEvent
-    ) => any)
+    ) => any )
     | null;
 }
 

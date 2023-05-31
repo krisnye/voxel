@@ -5,4 +5,4 @@ import "./index.css"
 import "./utils.css"
 import "./theme.css"
 
-render(<App />, document.getElementById("app") as HTMLElement)
+render( <App />, document.getElementById( "app" ) as HTMLElement )

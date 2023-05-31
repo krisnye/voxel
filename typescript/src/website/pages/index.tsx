@@ -7,7 +7,7 @@ interface Page {
     component: () => JSX.Element
 }
 
-export const pages: Record<string, Page> = Object.fromEntries(Object.entries({
+export const pages: Record<string, Page> = Object.fromEntries( Object.entries( {
     kris: {
         name: "Kris",
         component: KrisPage,
@@ -16,5 +16,5 @@ export const pages: Record<string, Page> = Object.fromEntries(Object.entries({
         name: "Kody",
         component: KodyPage,
     },
-}));
+} ) );
 

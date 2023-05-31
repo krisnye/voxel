@@ -18,9 +18,9 @@ const material = {
     woodHard: { id: -1, type: Type.solid, thermalConductivity: 0.16, specificHeatCapacity: 2000, density: 0.65 },
     woodSoft: { id: -1, type: Type.solid, thermalConductivity: 0.12, specificHeatCapacity: 2300, density: 0.49 },
     infiniteHeatCapacity: { id: -1, type: Type.solid, thermalConductivity: 100, specificHeatCapacity: Number.POSITIVE_INFINITY, density: 10 },
-} as const satisfies { [name: string]: Material };
+} as const satisfies { [ name: string ]: Material };
 
 // assign correct id values to each material
-Object.values(material).forEach((item: Material, index: number) => { item.id = index; })
+Object.values( material ).forEach( ( item: Material, index: number ) => { item.id = index; } )
 
-export const materials: Material[] & typeof material = Object.assign(Object.values(material), material);
+export const materials: Material[] & typeof material = Object.assign( Object.values( material ), material );
