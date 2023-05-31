@@ -5,9 +5,9 @@ import { Engine, RawTexture3D, Scene, Texture } from "@babylonjs/core"
  */
 class VoxelOctreeLevel {
 
-    public readonly halfWidth: number
-    public readonly halfHeight: number
-    public readonly halfDepth: number
+    public readonly widthInBytes: number
+    public readonly heightInBytes: number
+    public readonly depthInBytes: number
 
     constructor(
         public readonly width: number,
@@ -19,9 +19,9 @@ class VoxelOctreeLevel {
     ) {
         if ( width & 1 || height & 1 || depth & 1 )
             throw new Error( "OctreeLevel requires even dimensions." )
-        this.halfWidth = this.width >> 1
-        this.halfHeight = this.height >> 1
-        this.halfDepth = this.depth >> 1
+        this.widthInBytes = this.width >> 1
+        this.heightInBytes = this.height >> 1
+        this.depthInBytes = this.depth >> 1
     }
 
     static createFromChild( childLevel: VoxelOctreeLevel ) {
@@ -62,7 +62,7 @@ class VoxelOctreeLevel {
     }
 
     byteIndex( x: number, y: number, z: number ) {
-        return Math.floor( x >> 1 ) + this.halfWidth * ( Math.floor( y >> 1 ) + this.halfHeight * Math.floor( z >> 1 ) )
+        return ( x >> 1 ) + this.widthInBytes * ( ( y >> 1 ) + this.heightInBytes * ( z >> 1 ) )
     }
 
     bitIndex( x: number, y: number, z: number ) {
@@ -101,7 +101,7 @@ export default class VoxelOctree {
         const level0 = VoxelOctreeLevel.createFromDataArray( width, height, depth, data )
         const levels = [ level0 ] as VoxelOctreeLevel[]
         let prevLevel = level0
-        while ( prevLevel.minDimension > 4 ) {
+        while ( prevLevel.minDimension > 2 ) {
             let level = VoxelOctreeLevel.createFromChild( prevLevel )
             levels.push( level )
             prevLevel = level
@@ -124,7 +124,7 @@ export default class VoxelOctree {
 
         const texture = new RawTexture3D(
             level0.data,
-            level0.width / 2, level0.height / 2, level0.depth / 2,
+            level0.widthInBytes, level0.heightInBytes, level0.depthInBytes,
             Engine.TEXTUREFORMAT_R_INTEGER, scene,
             false, false, Texture.NEAREST_NEAREST_MIPNEAREST,
             Engine.TEXTURETYPE_UNSIGNED_BYTE
@@ -156,7 +156,7 @@ export default class VoxelOctree {
                 return
             gl.texImage3D(
                 target, levelIndex, gl.R8UI,
-                level.width / 2, level.height / 2, level.depth / 2, 0,
+                level.widthInBytes, level.heightInBytes, level.depthInBytes, 0,
                 gl.RED_INTEGER, gl.UNSIGNED_BYTE,
                 level.data
             )
