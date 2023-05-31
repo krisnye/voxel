@@ -14,6 +14,7 @@ type VoxelMaterialOptions = {
     /** Given in model space. */
     texelOrigin?: Vector3,
     textures?: { [ key: string ]: { type: string, value: Texture } },
+    fragDefinitions?: string
 }
 
 export default function voxelMaterial(
@@ -28,6 +29,7 @@ export default function voxelMaterial(
         maxLod = 0,
         texelOrigin = new Vector3( .5, .5, .5 ),
         textures,
+        fragDefinitions = ""
     } = options
 
     const material = new CustomMaterial( `VoxelMaterial${ isShadowMaterial ? "_shadow" : "" }`, scene )
@@ -74,7 +76,7 @@ export default function voxelMaterial(
     material.alphaMode = 1
     material.specularColor = Color3.White().scale( .1 )
 
-    const fragCode = voxelShaderDefinitions
+    const fragCode = fragDefinitions + "\n" + voxelShaderDefinitions
         .replace( "// @get-diffuse", getDiffuse )
         .replace( "// @get-is-occupied", getIsOccupied )
 

@@ -1,22 +1,56 @@
 import { Engine, RawTexture3D, Scene, Texture } from "@babylonjs/core"
 
-type DataArray = {
-    [ key: number ]: number
-    get length(): number
-}
+/**
+ * Represents a level of an octree with 2x2x2 cells packed into single bytes.
+ */
+class VoxelOctreeLevel {
 
-class OctreeLevel {
+    public readonly halfWidth: number
+    public readonly halfHeight: number
+    public readonly halfDepth: number
+
     constructor(
         public readonly width: number,
         public readonly height: number,
         public readonly depth: number,
         public readonly volume: number = width * height * depth,
         public readonly minDimension: number = Math.min( width, height, depth ),
-        public readonly data: Uint8ClampedArray = new Uint8ClampedArray( volume ),
-    ) { }
+        public readonly data: Uint8ClampedArray = new Uint8ClampedArray( Math.max( volume / 8, 64 ) ),
+    ) {
+        if ( width & 1 || height & 1 || depth & 1 )
+            throw new Error( "OctreeLevel requires even dimensions." )
+        this.halfWidth = this.width >> 1
+        this.halfHeight = this.height >> 1
+        this.halfDepth = this.depth >> 1
+    }
 
-    index( x: number, y: number, z: number ) {
-        return x + this.width * ( y + this.height * z )
+    static createFromChild( childLevel: VoxelOctreeLevel ) {
+        let level = new VoxelOctreeLevel(
+            Math.ceil( childLevel.width / 2 ),
+            Math.ceil( childLevel.height / 2 ),
+            Math.ceil( childLevel.depth / 2 ),
+        )
+
+        for ( let z = 0; z < level.depth; z++ ) {
+            for ( let y = 0; y < level.height; y++ ) {
+                for ( let x = 0; x < level.width; x++ ) {
+                    let hasSolidChild = childLevel.data[ childLevel.byteIndex( x * 2, y * 2, z * 2 ) ] // != 0
+                    level.set( x, y, z, hasSolidChild )
+                }
+            }
+        }
+
+        return level
+    }
+
+    static createFromDataArray( width: number, height: number, depth: number, data: DataArray ) {
+        const level = new VoxelOctreeLevel( width, height, depth )
+        let i = 0
+        for ( let z = 0; z < depth; z++ )
+            for ( let y = 0; y < height; y++ )
+                for ( let x = 0; x < width; x++ )
+                    level.set( x, y, z, data[ i++ ] )
+        return level
     }
 
     contains( x: number, y: number, z: number ) {
@@ -27,113 +61,113 @@ class OctreeLevel {
         )
     }
 
+    byteIndex( x: number, y: number, z: number ) {
+        return Math.floor( x >> 1 ) + this.halfWidth * ( Math.floor( y >> 1 ) + this.halfHeight * Math.floor( z >> 1 ) )
+    }
+
+    bitIndex( x: number, y: number, z: number ) {
+        return ( x & 1 ) + 2 * ( y & 1 ) + 4 * ( z & 1 )
+    }
+
     get( x: number, y: number, z: number ) {
-        if ( !this.contains( x, y, z ) )
-            return 0
-        return this.data[ this.index( x, y, z ) ]
+        let byteIndex = this.byteIndex( x, y, z )
+        let bitIndex = this.bitIndex( x, y, z )
+        return ( this.data[ byteIndex ] >> bitIndex ) & 1
+
     }
 
     set( x: number, y: number, z: number, value: number ) {
-        if ( !this.contains( x, y, z ) )
-            return
-        this.data[ this.index( x, y, z ) ] = value
+        let byteIndex = this.byteIndex( x, y, z )
+        let bitIndex = this.bitIndex( x, y, z )
+        if ( value )
+            this.data[ byteIndex ] |= 1 << bitIndex
+        else
+            this.data[ byteIndex ] &= ~( 1 << bitIndex )
     }
 }
 
-export function getOctreeLevels( width: number, height: number, depth: number, data: DataArray, emptyValue: number ) {
-    const level0 = new OctreeLevel( width, height, depth )
-    for ( let i = 0; i < data.length; i++ )
-        level0.data[ i ] = data[ i ] == emptyValue ? 0 : 1
+type DataArray = { [ key: number ]: number, get length(): number }
 
-    const levels = [ level0 ] as OctreeLevel[]
+export class VoxelOctree {
 
-    let prevLevel = level0
-    while ( prevLevel.minDimension > 4 ) {
-        let level = new OctreeLevel(
-            Math.ceil( prevLevel.width / 2 ),
-            Math.ceil( prevLevel.height / 2 ),
-            Math.ceil( prevLevel.depth / 2 ),
-        )
+    levels: VoxelOctreeLevel[]
 
-        for ( let z = 0; z < level.depth; z++ ) {
-            for ( let y = 0; y < level.height; y++ ) {
-                for ( let x = 0; x < level.width; x++ ) {
-
-                    let hasSolidChild = 0
-                    for ( let dz = 0; dz < 2; dz++ )
-                        for ( let dy = 0; dy < 2; dy++ )
-                            for ( let dx = 0; dx < 2; dx++ )
-                                hasSolidChild |= prevLevel.get( x * 2 + dx, y * 2 + dy, z * 2 + dz )
-
-                    level.set( x, y, z, hasSolidChild )
-
-                }
-            }
+    constructor(
+        public readonly width: number,
+        public readonly height: number,
+        public readonly depth: number,
+        data: DataArray
+    ) {
+        const level0 = VoxelOctreeLevel.createFromDataArray( width, height, depth, data )
+        const levels = [ level0 ] as VoxelOctreeLevel[]
+        let prevLevel = level0
+        while ( prevLevel.minDimension > 4 ) {
+            let level = VoxelOctreeLevel.createFromChild( prevLevel )
+            levels.push( level )
+            prevLevel = level
         }
-
-        levels.push( level )
-        prevLevel = level
+        this.levels = levels
     }
 
-    return levels
-}
+    static glsl_sampleOctree =
+        `bool sampleOctree(lowp usampler3D texture, ivec3 pos, uint lod) {
+            ivec3 lodPos = pos / (1 << lod);
+            uint byte = texelFetch( texture, lodPos / 2, int( lod ) ).r;
+            uint bitIndex = uint(lodPos.x & 1) + 2u * uint(lodPos.y & 1) + 4u * uint(lodPos.z & 1);
+            uint value = (byte >> bitIndex) & 1u;
+            return value > 0u;
+        }`
 
-export default function buildOctreeTexture( width: number, height: number, depth: number, data: DataArray, emptyValue: number, scene: Scene ) {
-    const levels = getOctreeLevels( width, height, depth, data, emptyValue )
-    const level0 = levels[ 0 ]
+    buildTexture( scene: Scene ) {
+        let levels = this.levels
+        let level0 = levels[ 0 ]
 
-    // console.log( "Generated", levels.length, "levels." )
-
-    const texture = new RawTexture3D(
-        level0.data,
-        level0.width, level0.height, level0.depth,
-        Engine.TEXTUREFORMAT_R_INTEGER, scene,
-        false, false, Texture.NEAREST_NEAREST_MIPNEAREST,
-        Engine.TEXTURETYPE_UNSIGNED_BYTE
-    )
-
-    const internalTexture = texture.getInternalTexture()
-
-    if ( !internalTexture )
-        throw new Error( "Could not access internal texture to set mipmaps." )
-
-    const engine = scene.getEngine()
-    const gl = engine._gl
-    const target = gl.TEXTURE_3D
-
-    engine._bindTextureDirectly( target, internalTexture, true, true )
-
-    gl.texParameteri( target, gl.TEXTURE_BASE_LEVEL, 0 )
-    gl.texParameteri( target, gl.TEXTURE_MAX_LEVEL, levels.length - 1 )
-    gl.texParameterf( target, gl.TEXTURE_MIN_LOD, 0 )
-    gl.texParameterf( target, gl.TEXTURE_MAX_LOD, levels.length - 1 )
-    gl.texParameteri( target, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST )
-
-    internalTexture.isReady = false
-    internalTexture.useMipMaps = true
-    internalTexture.generateMipMaps = true
-
-    levels.forEach( ( level, levelIndex ) => {
-        if ( levelIndex == 0 )
-            return
-
-        // console.log( "Setting mip level:", levelIndex )
-        // console.log( "Resolution:", level.width, level.height, level.depth )
-        // console.log( "Array size: ", level.data.length )
-
-        gl.texImage3D(
-            target, levelIndex, gl.R8UI,
-            level.width, level.height, level.depth, 0,
-            gl.RED_INTEGER, gl.UNSIGNED_BYTE,
-            level.data
+        const texture = new RawTexture3D(
+            level0.data,
+            level0.width / 2, level0.height / 2, level0.depth / 2,
+            Engine.TEXTUREFORMAT_R_INTEGER, scene,
+            false, false, Texture.NEAREST_NEAREST_MIPNEAREST,
+            Engine.TEXTURETYPE_UNSIGNED_BYTE
         )
 
-    } )
-    engine._bindTextureDirectly( target, null )
+        const internalTexture = texture.getInternalTexture()
 
-    internalTexture.isReady = true
+        if ( !internalTexture )
+            throw new Error( "Could not access internal texture to set mipmaps." )
 
-    texture.metadata = { lodLevels: levels.length }
-    return texture as RawTexture3D & { metadata: { lodLevels: number } }
+        const engine = scene.getEngine()
+        const gl = engine._gl
+        const target = gl.TEXTURE_3D
+
+        engine._bindTextureDirectly( target, internalTexture, true, true )
+
+        gl.texParameteri( target, gl.TEXTURE_BASE_LEVEL, 0 )
+        gl.texParameteri( target, gl.TEXTURE_MAX_LEVEL, levels.length - 1 )
+        gl.texParameterf( target, gl.TEXTURE_MIN_LOD, 0 )
+        gl.texParameterf( target, gl.TEXTURE_MAX_LOD, levels.length - 1 )
+        gl.texParameteri( target, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST )
+
+        internalTexture.isReady = false
+        internalTexture.useMipMaps = true
+        internalTexture.generateMipMaps = true
+
+        levels.forEach( ( level, levelIndex ) => {
+            if ( levelIndex == 0 )
+                return
+            gl.texImage3D(
+                target, levelIndex, gl.R8UI,
+                level.width / 2, level.height / 2, level.depth / 2, 0,
+                gl.RED_INTEGER, gl.UNSIGNED_BYTE,
+                level.data
+            )
+        } )
+
+        engine._bindTextureDirectly( target, null )
+        internalTexture.isReady = true
+
+        texture.metadata = { lodLevels: levels.length }
+        return texture as RawTexture3D & { metadata: { lodLevels: number } }
+
+    }
 
 }

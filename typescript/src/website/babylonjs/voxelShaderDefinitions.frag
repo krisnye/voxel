@@ -139,19 +139,21 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
             bool occupied = getIsOccupided(ipos, lodLevel);
             if (!occupied) {
                 consecutiveEmpties++;
-                if (consecutiveEmpties > 2u && lodLevel + 1u <= uMaxLod) {
+                if (consecutiveEmpties > 4u && lodLevel + 1u <= uMaxLod) {
                     result.voxelReads++;
                     bool largerLodOccupied = getIsOccupided(ipos, lodLevel + 1u);
                     if (!largerLodOccupied)
                         lodLevel++;
+                    else
+                        consecutiveEmpties = 0u;
                 }
                 continue;
             }
             consecutiveEmpties = 0u;
 
             float dist = dot(vec3(ipos) - startPos, heading);
-            float lodFactor = .0025; // Todo: Pull this out into a uniform.
-            if (stepSize > dist * lodFactor && lodLevel > 0u) {
+            float lodFactor = .00125; // Todo: Pull this out into a uniform.
+            if (stepSize > dist * lodFactor && lodLevel > 1u) {
                 lodLevel--;
                 pos = previousPos + displacement * (dt - .001);
                 ipos = ivec3(floor(pos));
