@@ -1,9 +1,7 @@
 import React from "preact"
-import { useState } from "preact/hooks"
 import SceneComponent from "./SceneComponent"
-import Babylon, {
-    Engine, Scene, MeshBuilder, Vector3, Color3, FxaaPostProcess, Color4, Material,
-    BoundingBox, StandardMaterial, RawTexture3D, Texture, Camera, Plane, DirectionalLight, ShadowGenerator, Mesh, PointLight, Light, Matrix, Vector4, Node, TransformNode
+import {
+    Engine, Scene, FxaaPostProcess, Color4, TransformNode
 } from "@babylonjs/core"
 import { addDefaultLights, defaultCamera, groupNodes } from "../babylonjs/BabylonUtils"
 import voxelMaterial from "../babylonjs/voxelMaterial"
