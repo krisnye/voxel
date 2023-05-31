@@ -72,9 +72,9 @@ export default function VoxelTestScene() {
 }
 
 function createSceneOctree( scene: Scene ) {
-    const width = 512
+    const width = 1024
     const height = 256
-    const depth = 512
+    const depth = 1024
 
     const data = new Uint8ClampedArray( width * height * depth )
 
@@ -84,7 +84,7 @@ function createSceneOctree( scene: Scene ) {
         if ( heightMap[ i ] == 0 ) {
             let xn = x / width
             let zn = z / depth
-            let freq = Math.PI * 2 * 5
+            let freq = Math.PI * 2
             let h = Math.sin( xn * freq ) * Math.sin( zn * freq )
             heightMap[ i ] = .25 + .75 * h
         }
