@@ -1,7 +1,7 @@
 import { Engine, RawTexture3D, Scene, Texture } from "@babylonjs/core"
 
 /**
- * Represents a level of an octree with 2x2x2 cells packed into single bytes.
+ * Represents a level of an octree with each 2x2x2 cell packed into single bytes.
  */
 class VoxelOctreeLevel {
 
@@ -88,7 +88,7 @@ class VoxelOctreeLevel {
 
 type DataArray = { [ key: number ]: number, get length(): number }
 
-export class VoxelOctree {
+export default class VoxelOctree {
 
     levels: VoxelOctreeLevel[]
 

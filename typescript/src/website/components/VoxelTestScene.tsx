@@ -8,7 +8,7 @@ import Babylon, {
 import { addDefaultLights, defaultCamera, groupNodes } from "../babylonjs/BabylonUtils"
 import voxelMaterial from "../babylonjs/voxelMaterial"
 import voxelChunkNode from "../babylonjs/voxelChunkNode"
-import { VoxelOctree } from "../babylonjs/buildOctreeTexture"
+import VoxelOctree from "../babylonjs/VoxelOctree"
 
 export default function VoxelTestScene() {
 
