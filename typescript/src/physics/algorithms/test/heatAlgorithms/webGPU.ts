@@ -1,6 +1,5 @@
 import { VoxelMaterial } from "../../../VoxelMaterial.js";
 import { HeatTransferVolumeType } from "../algorithms.test.js";
-import "../../../../types/webgpu.js";
 
 declare global {
     interface GPUDevice {
@@ -33,7 +32,8 @@ export async function webGPU( v: HeatTransferVolumeType, materials: VoxelMateria
 @group(0) @binding(0)
 var<storage, read_write> output: array<f32>;
 
-@compute @workgroup_size(64)
+//  workgroup_size is vec3 and determines local_invocation_id range
+@compute @workgroup_size(64, 1, 1)
 fn main(
   @builtin(global_invocation_id)
   global_id : vec3u,
@@ -42,12 +42,12 @@ fn main(
   local_id : vec3u,
 ) {
   // Avoid accessing the buffer out of bounds
-//   if (global_id.x >= ${ BUFFER_SIZE }) {
-//     return;
-//   }
+  if (global_id.x >= ${ BUFFER_SIZE }) {
+    return;
+  }
 
   output[global_id.x] =
-    f32(global_id.x) * 1000. + f32(local_id.x);
+    f32(global_id.x) * 100000.0 + f32(local_id.y) * 100.0 + f32(local_id.x);
 }
 `
 
@@ -103,7 +103,11 @@ fn main(
     const passEncoder = commandEncoder.beginComputePass();
     passEncoder.setPipeline( computePipeline );
     passEncoder.setBindGroup( 0, bindGroup );
-    passEncoder.dispatchWorkgroups( Math.ceil( BUFFER_SIZE / 64 ) );
+    // dispatch workGroups determines the number of calls
+    //  total calls to shader = local workgroup size * dispatch global workgroup size
+    //  in this sample, the are using BUFFER_SIZE / 64 because the local workgroup size is uvec3(64,1,1)
+    //  so the total invocations will equal the buffer size which they write to.
+    passEncoder.dispatchWorkgroups( Math.ceil( BUFFER_SIZE / 64 ), 1, 1 );
     passEncoder.end();
 
     // Copy output buffer to staging buffer
@@ -129,7 +133,6 @@ fn main(
     const data = copyArrayBuffer.slice( 0 );
     stagingBuffer.unmap();
     console.log( new Float32Array( data ) );
-
     console.log( { device, shaderModule, output, stagingBuffer, bindGroupLayout, bindGroup, computePipeline, commandEncoder, passEncoder } );
 
     return async () => {
