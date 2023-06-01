@@ -7,6 +7,14 @@ declare global {
     }
 }
 
+//  so, how compute shaders work.
+//  shader defines constant 3d problem space A: uvec3 (gl_LocalInvocationID)
+//  dispatch call passes 3d problem space B: uvec3 (gl_WorkGroupID)
+//  shader is called with A * B invocation counts.
+//  signature call(gl_WorkGroupID: uvec3, gl_LocalInvocationID: uvec3) => void
+//  up to call to determine what to read and what to write.
+//  for most 3d computations we are interested in we only need one problem space so we can set other to uvec3(1,1,1)
+
 export async function webGPU( v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number ) {
     // init here.
     if ( !globalThis.navigator ) {
@@ -35,6 +43,11 @@ var<storage, read_write> output: array<f32>;
 //  workgroup_size is vec3 and determines local_invocation_id range
 @compute @workgroup_size(64, 1, 1)
 fn main(
+  // gl_GlobalInvocationID
+  //  This value uniquely identifies this particular invocation of the compute shader among all invocations of this compute dispatch call. It's a short-hand for the math computation:
+  //  gl_WorkGroupID * gl_WorkGroupSize + gl_LocalInvocationID;
+  //    this will normally not be very useful to us
+  //    they are just using it here to write outputs to an array.
   @builtin(global_invocation_id)
   global_id : vec3u,
 
