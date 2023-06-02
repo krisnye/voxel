@@ -16,7 +16,7 @@ export type HeatTransferVolumeType = Volume<{
     heat: Float32Array;
 }>;
 
-export type TestAlgorithm = ( v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number ) => null | Promise<() => Promise<void>>;
+export type TestAlgorithm = ( v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number ) => null | ( Promise<() => Promise<void>> );
 
 export async function runTests() {
     const timeStep = 1 / 30;
