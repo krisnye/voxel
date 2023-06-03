@@ -1,3 +1,4 @@
+import { F32, U8 } from "../../data/Primitive.js";
 import { Volume } from "../../data/Volume.js";
 import { X, Y, Z } from "../../math/types.js";
 import { VoxelMaterial } from "../VoxelMaterial.js";
@@ -49,10 +50,10 @@ function calculateVoxelHeat(
 export function calculateHeat(
     volume: Volume<{
         //  read
-        material: Uint8Array,
-        temperature: Float32Array,
+        material: typeof U8,
+        temperature: typeof F32,
         //  write
-        heat: Float32Array
+        heat: typeof F32
     }>,
     materials: VoxelMaterial[]
 ) {
@@ -106,10 +107,10 @@ export function calculateHeat(
 export function applyHeat(
     volume: Volume<{
         //  read
-        material: Uint8Array,
-        heat: Float32Array
+        material: typeof U8,
+        heat: typeof F32
         //  write
-        temperature: Float32Array,
+        temperature: typeof F32,
     }>,
     materials: VoxelMaterial[],
     time: Time,
@@ -134,8 +135,8 @@ export function applyHeat(
 export function totalHeatEnergy(
     volume: Volume<{
         //  read
-        material: Uint8Array,
-        temperature: Float32Array,
+        material: typeof U8,
+        temperature: typeof F32,
     }>,
     materials: VoxelMaterial[],
 ) {

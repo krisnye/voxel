@@ -2,8 +2,9 @@ import { X, Y, Z } from "../../math/types.js";
 import { Volume } from "../../data/Volume.js";
 import { materials } from "../materials.js";
 import { Kelvin } from "../constants.js";
+import { F32, U8 } from "../../data/Primitive.js";
 
-export function fillWithTestMaterial( volume: Volume<{ material: Uint8Array }> ) {
+export function fillWithTestMaterial( volume: Volume<{ material: typeof U8 }> ) {
     const { size } = volume;
     const alternateMaterials = [ materials.rock, materials.iron, materials.woodHard, materials.dirt ];
     //  fill bottom half with rock, top with air
@@ -20,7 +21,7 @@ export function fillWithTestMaterial( volume: Volume<{ material: Uint8Array }> )
     return volume;
 }
 
-export function addCornerHeatSourceAndSink( volume: Volume<{ material: Uint8Array, temperature: Float32Array }> ) {
+export function addCornerHeatSourceAndSink( volume: Volume<{ material: typeof U8, temperature: typeof F32 }> ) {
     let hot = 0;
     let cold = volume.data.material.length - 1;
     volume.data.material[ hot ] = volume.data.material[ cold ] = materials.infiniteHeatCapacity.id;

@@ -1,136 +1,57 @@
+import { F32 } from "../../../../data/Primitive.js";
+import { Volume } from "../../../../data/Volume.js";
+import { GPUHelper } from "../../../../gpu/GPUHelper.js";
+import { GPUVolume } from "../../../../gpu/GPUVolume.js";
+import { VolumePipeline } from "../../../../gpu/GPUVolumePipeline.js";
 import { VoxelMaterial } from "../../../VoxelMaterial.js";
 import { HeatTransferVolumeType } from "../algorithms.test.js";
-import "../../../../types/webgpu.js";
 
-declare global {
-    interface GPUDevice {
-        foo(): boolean;
-    }
-}
+
+//  so, how compute shaders work.
+//  shader defines a workgroup size: uvec3 and invocation function
+//  pipeline is called with a workgroup count: uvec3
+//  total invocations = workgroup size * workgroup count
 
 export async function webGPU( v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number ) {
-    // init here.
-    if ( !globalThis.navigator ) {
+    if ( !GPUHelper.supported ) {
         return null;
-        // throw new Error(`Not in browser`);
-    }
-    if ( !navigator.gpu ) {
-        return null;
-        // throw Error("WebGPU not supported.");
     }
 
-    const adapter = await navigator.gpu.requestAdapter();
-    if ( !adapter ) {
-        return null;
-        // throw Error("Couldn't request WebGPU adapter.");
-    }
-
-    const device = await adapter.requestDevice();
-
-    const BUFFER_SIZE = 1000;
-
-    const shader = `
-@group(0) @binding(0)
-var<storage, read_write> output: array<f32>;
-
-@compute @workgroup_size(64)
-fn main(
-  @builtin(global_invocation_id)
-  global_id : vec3u,
-
-  @builtin(local_invocation_id)
-  local_id : vec3u,
-) {
-  // Avoid accessing the buffer out of bounds
-//   if (global_id.x >= ${ BUFFER_SIZE }) {
-//     return;
-//   }
-
-  output[global_id.x] =
-    f32(global_id.x) * 1000. + f32(local_id.x);
-}
-`
-
-    const shaderModule = device.createShaderModule( {
-        code: shader,
-    } );
-
-    const output = device.createBuffer( {
-        size: BUFFER_SIZE,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-    } );
-
-    const stagingBuffer = device.createBuffer( {
-        size: BUFFER_SIZE,
-        usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
-    } );
-
-    const bindGroupLayout = device.createBindGroupLayout( {
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.COMPUTE,
-                buffer: {
-                    type: "storage",
-                },
-            },
-        ],
-    } );
-
-    const bindGroup = device.createBindGroup( {
-        layout: bindGroupLayout,
-        entries: [
-            {
-                binding: 0,
-                resource: {
-                    buffer: output,
-                },
-            },
-        ],
-    } );
-
-    const computePipeline = device.createComputePipeline( {
-        layout: device.createPipelineLayout( {
-            bindGroupLayouts: [ bindGroupLayout ],
-        } ),
-        compute: {
-            module: shaderModule,
-            entryPoint: "main",
+    // create volume gpu pipeline
+    const volumePipeline = await VolumePipeline.create( {
+        input: {},
+        output: {
+            output: F32
         },
-    } );
+        shader: `
+@compute @workgroup_size(1,1,1)
+fn main(
+    @builtin(workgroup_id) workgroup_id : vec3u,
+    @builtin(num_workgroups) size : vec3u,
+) {
+    //  this should give me index into volume data
+    let index = workgroup_id.z * size.y * size.x + workgroup_id.y * size.x + workgroup_id.x;
+    output[index] = f32(index);
+    // kody, try these outputs instead to see each value
+    // output[index] = f32(workgroup_id.z);    //  looks good
+    // output[index] = f32(workgroup_id.y);    //  looks wrong
+    // output[index] = f32(workgroup_id.x);    //  looks wrong
+}`} );
 
-    const commandEncoder = device.createCommandEncoder();
-    const passEncoder = commandEncoder.beginComputePass();
-    passEncoder.setPipeline( computePipeline );
-    passEncoder.setBindGroup( 0, bindGroup );
-    passEncoder.dispatchWorkgroups( Math.ceil( BUFFER_SIZE / 64 ) );
-    passEncoder.end();
+    // create cpu volume
+    const volume = Volume.create( [ 2, 2, 2 ], { output: F32 } );
+    const { device } = volumePipeline;
 
-    // Copy output buffer to staging buffer
-    commandEncoder.copyBufferToBuffer(
-        output,
-        0, // Source offset
-        stagingBuffer,
-        0, // Destination offset
-        BUFFER_SIZE
-    );
-
-    // End frame by passing array of command buffers to command queue for execution
+    // create gpu volume
+    const gpuVolume = GPUVolume.create( device, { ...volume, read: true } );
+    // run a pass
+    const commandEncoder = volumePipeline.encodePass( gpuVolume );
+    // queue it and wait for finish.
     device.queue.submit( [ commandEncoder.finish() ] );
-
-    // map staging buffer to read results back to JS
-    await stagingBuffer.mapAsync(
-        GPUMapMode.READ,
-        0, // Offset
-        BUFFER_SIZE // Length
-    );
-
-    const copyArrayBuffer = stagingBuffer.getMappedRange( 0, BUFFER_SIZE );
-    const data = copyArrayBuffer.slice( 0 );
-    stagingBuffer.unmap();
-    console.log( new Float32Array( data ) );
-
-    console.log( { device, shaderModule, output, stagingBuffer, bindGroupLayout, bindGroup, computePipeline, commandEncoder, passEncoder } );
+    await device.queue.onSubmittedWorkDone();
+    // copy the gpu volume data back to cpu
+    const cpuVolume = await gpuVolume.copyToCPU( volume );
+    console.log( cpuVolume.toString() );
 
     return async () => {
         console.log( "HELLO WEBGPU" );
