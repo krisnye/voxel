@@ -45,7 +45,7 @@ export class Volume<Types extends Record<string, ArrayTypePrimitive>> {
         if ( z >= sizeZ ) {
             return -6;
         }
-        return x + ( y + ( z * sizeY ) * sizeX );
+        return x + ( y + ( z * sizeY ) ) * sizeX;
     }
 
     public dataToString( name: StringKeyOf<Types> ) {
