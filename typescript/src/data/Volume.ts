@@ -1,23 +1,25 @@
-import { TypedArrayConstructor, TypedData } from "./types.js";
 import { Vector3, X, Y, Z } from "../math/types.js";
+import { ArrayTypePrimitive } from "./Primitive.js";
+import { StringKeyOf, stringKeys } from "../utils/StringUtils.js";
 
-export class Volume<Data extends TypedData> {
+export class Volume<Types extends Record<string, ArrayTypePrimitive>> {
 
-    constructor(
+    private constructor(
         public readonly size: Vector3,
-        public readonly data: Data
+        public readonly types: Types,
+        public readonly data: { [ K in keyof Types ]: InstanceType<Types[ K ][ "arrayType" ]> }
     ) {
     }
 
-    static create<T extends { [ name: string ]: TypedArrayConstructor }>(
+    static create<T extends Record<string, ArrayTypePrimitive>>(
         size: Vector3,
-        dataTypes: T )
-        : Volume<{ [ K in keyof T ]: InstanceType<T[ K ]> }> {
+        types: T )
+        : Volume<{ [ K in keyof T ]: T[ K ] }> {
         const length = size[ X ] * size[ Y ] * size[ Z ];
-        const data = Object.fromEntries( Object.entries( dataTypes ).map( ( [ name, Type ] ) => {
+        const data = Object.fromEntries( Object.entries( types ).map( ( [ name, { arrayType: Type } ] ) => {
             return [ name, new Type( length ) ];
-        } ) ) as { [ K in keyof T ]: InstanceType<T[ K ]> };
-        return new Volume( size, data );
+        } ) ) as { [ K in keyof T ]: InstanceType<T[ K ][ "arrayType" ]> };
+        return new Volume( size, types, data );
     }
 
     /**
@@ -46,27 +48,26 @@ export class Volume<Data extends TypedData> {
         return x + ( y + ( z * sizeY ) * sizeX );
     }
 
-    public dataToString( name: keyof TypedData ) {
+    public dataToString( name: StringKeyOf<Types> ) {
         const length = 8;
         const array = this.data[ name ];
         let sb = `  ${ name }:\n\n`;
-        // for (let z = 0; z < this.size[Z]; z++) {
-        // invert z because visibly, that starts at the bottom
-        for ( let z = this.size[ Z ] - 1; z >= 0; z-- ) {
+        for ( let z = 0; z < this.size[ Z ]; z++ ) {
             for ( let y = 0; y < this.size[ Y ]; y++ ) {
                 for ( let x = 0; x < this.size[ X ]; x++ ) {
                     let valueString = array[ this.index( x, y, z ) ].toFixed( 2 ).slice( 0, length ).padStart( length, " " );
-                    sb += valueString + ",";
+                    sb += valueString + ", ";
                 }
                 sb += "\n";
             }
+            sb += "\n";
         }
         return sb;
     }
 
     toString() {
         return `Volume${ this.size }\n\n` +
-            Object.keys( this.data ).map( this.dataToString.bind( this ) ).join( "\n" );
+            stringKeys( this.data ).map( this.dataToString.bind( this ) ).join( "\n" );
     }
 
 }

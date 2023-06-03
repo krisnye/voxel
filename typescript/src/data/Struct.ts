@@ -1,7 +1,7 @@
+import { StringKeyOf } from "../utils/StringUtils.js";
 import { Primitive } from "./Primitive.js";
-import { StringKeyOf } from "./types.js";
 
-type StructFieldDefinition = Primitive<number | bigint> | StructClass;
+type StructFieldDefinition = Primitive | StructClass;
 
 type StructDefinition = {
     [ name: string ]: StructFieldDefinition;
