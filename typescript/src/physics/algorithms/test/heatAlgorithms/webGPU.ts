@@ -30,11 +30,12 @@ fn main(
     @builtin(num_workgroups) size : vec3u,
 ) {
     //  this should give me index into volume data
-    let index = (workgroup_id.z * size.y + workgroup_id.y) * size.x + workgroup_id.x;
-    //  x looks flipped
-    //  z looks good
-    //  y looks bad
+    let index = workgroup_id.z * size.y * size.x + workgroup_id.y * size.x + workgroup_id.x;
     output[index] = f32(index);
+    // kody, try these outputs instead to see each value
+    // output[index] = f32(workgroup_id.z);    //  looks good
+    // output[index] = f32(workgroup_id.y);    //  looks wrong
+    // output[index] = f32(workgroup_id.x);    //  looks wrong
 }`} );
 
     // create cpu volume
