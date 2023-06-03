@@ -23,8 +23,8 @@ export async function webGPU( v: HeatTransferVolumeType, materials: VoxelMateria
         output: {
             output: F32
         },
-        shader: `
-@compute @workgroup_size(1,1,1)
+        shader: /* wgsl */`
+@compute @workgroup_size(1)
 fn main(
     @builtin(workgroup_id) workgroup_id : vec3u,
     @builtin(num_workgroups) size : vec3u,
