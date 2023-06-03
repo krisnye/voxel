@@ -1,3 +1,4 @@
+import { F32, U8 } from "../../../data/Primitive.js";
 import { Volume } from "../../../data/Volume.js";
 import { VoxelMaterial, toVoxelMaterials } from "../../VoxelMaterial.js";
 import { Kelvin } from "../../constants.js";
@@ -11,16 +12,16 @@ const size: [ number, number, number ] = useBig ? [ 256, 256, 256 ] : [ 4, 1, 4 
 
 export const decimeterVoxelMaterials = toVoxelMaterials( materials, 0.1 );
 export type HeatTransferVolumeType = Volume<{
-    material: Uint8Array;
-    temperature: Float32Array;
-    heat: Float32Array;
+    material: typeof U8;
+    temperature: typeof F32;
+    heat: typeof F32;
 }>;
 
-export type TestAlgorithm = ( v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number ) => null | ( Promise<() => Promise<void>> );
+export type TestAlgorithm = ( v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number ) => Promise<null | ( () => Promise<void> )>;
 
 export async function runTests() {
     const timeStep = 1 / 30;
-    const volume = Volume.create( size, { material: Uint8Array, temperature: Float32Array, heat: Float32Array } );
+    const volume = Volume.create( size, { material: U8, temperature: F32, heat: F32 } );
     function resetVolume() {
         fillWithTestMaterial( volume );
         //  add some temperature to one of the locations, the rest are at absolute zero.
