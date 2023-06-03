@@ -1,7 +1,7 @@
 import React from "preact"
 import SceneComponent from "./SceneComponent"
 import {
-    Engine, Scene, FxaaPostProcess, Color4, TransformNode
+    Engine, Scene, FxaaPostProcess, Color4, TransformNode, Vector3, Texture
 } from "@babylonjs/core"
 import { addDefaultLights, defaultCamera, groupNodes } from "../babylonjs/BabylonUtils"
 import voxelMaterial from "../babylonjs/voxelMaterial"
@@ -17,25 +17,25 @@ export default function VoxelTestScene() {
         const fxaa = new FxaaPostProcess( "fxaa", 1.0, camera )
 
         const sceneOctree = createSceneOctree( scene )
-        const voxelTexture = sceneOctree.buildTexture( scene )
-        const resolution = sceneOctree.width
+        const voxelOctreeTexture = sceneOctree.buildTexture( scene )
+
         const voxelMaterialIns = voxelMaterial( scene, {
             fragDefinitions: VoxelOctree.glsl_sampleOctree,
             getIsOccupied: `
-                return sampleOctree(voxelTexture, pos, lod);
+                return sampleOctree(voxelOctreeTexture, pos, lod);
             `,
             getDiffuse: `
                 vec3 normal = traceResult.normal.xyz;
                 return (normal + vec3(1.0)) / 2.0;
             `,
-            maxLod: voxelTexture.metadata.lodLevels - 1,
-            resolution: sceneOctree.width,
+            maxLod: voxelOctreeTexture.metadata.lodLevels - 1,
+            resolution: new Vector3( sceneOctree.width, sceneOctree.height, sceneOctree.depth ),
             textures: {
-                voxelTexture: { type: "lowp usampler3D", value: voxelTexture }
+                voxelOctreeTexture: { type: "lowp usampler3D", value: voxelOctreeTexture }
             },
         } )
 
-        camera.speed *= 128 / resolution
+        camera.speed *= 128 / sceneOctree.width
 
         let chunkNodes = [] as TransformNode[]
         const widthInChunks = 1
@@ -82,7 +82,7 @@ function createSceneOctree( scene: Scene ) {
         if ( heightMap[ i ] == 0 ) {
             let xn = x / width
             let zn = z / depth
-            let freq = Math.PI * 2
+            let freq = Math.PI * 2 * 5
             let h = Math.sin( xn * freq ) * Math.sin( zn * freq )
             heightMap[ i ] = .25 + .75 * h
         }

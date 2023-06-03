@@ -8,17 +8,20 @@ class VoxelOctreeLevel {
     public readonly widthInBytes: number
     public readonly heightInBytes: number
     public readonly depthInBytes: number
+    public readonly volume: number
+    public readonly minDimension: number
+    public readonly data: Uint8ClampedArray
 
     constructor(
         public readonly width: number,
         public readonly height: number,
-        public readonly depth: number,
-        public readonly volume: number = width * height * depth,
-        public readonly minDimension: number = Math.min( width, height, depth ),
-        public readonly data: Uint8ClampedArray = new Uint8ClampedArray( Math.max( volume / 8, 64 ) ),
+        public readonly depth: number
     ) {
         if ( width & 1 || height & 1 || depth & 1 )
             throw new Error( "OctreeLevel requires even dimensions." )
+        this.volume = width * height * depth
+        this.minDimension = Math.min( width, height, depth )
+        this.data = new Uint8ClampedArray( Math.max( this.volume / 8, 64 ) )
         this.widthInBytes = this.width >> 1
         this.heightInBytes = this.height >> 1
         this.depthInBytes = this.depth >> 1
@@ -53,14 +56,6 @@ class VoxelOctreeLevel {
         return level
     }
 
-    contains( x: number, y: number, z: number ) {
-        return (
-            x >= 0 && x < this.width &&
-            y >= 0 && y < this.height &&
-            z >= 0 && z < this.depth
-        )
-    }
-
     byteIndex( x: number, y: number, z: number ) {
         return ( x >> 1 ) + this.widthInBytes * ( ( y >> 1 ) + this.heightInBytes * ( z >> 1 ) )
     }
@@ -73,7 +68,6 @@ class VoxelOctreeLevel {
         let byteIndex = this.byteIndex( x, y, z )
         let bitIndex = this.bitIndex( x, y, z )
         return ( this.data[ byteIndex ] >> bitIndex ) & 1
-
     }
 
     set( x: number, y: number, z: number, value: number ) {

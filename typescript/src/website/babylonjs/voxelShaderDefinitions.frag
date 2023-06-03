@@ -1,6 +1,6 @@
 #version 300 es
 precision highp float;
-uniform float resolution;
+uniform vec3 resolution;
 uniform float maxLod;
 uniform mat4 worldToTexel;
 uniform mat4 texelToWorld;
@@ -55,7 +55,6 @@ vec2 intersectAABB(vec3 rayOrigin, vec3 rayDir, vec3 boxMin, vec3 boxMax) {
 TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalWorld ) {
     TraceResult result;
 
-    vec3 texSize = vec3(resolution);
     uint uMaxLod = uint(maxLod);
 
     // Convert to texel space.
@@ -72,7 +71,7 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
     vec3 startPos = pos;
 
     // Todo: Step to the edge of the volume before raymarching.
-    vec2 intersectTime = intersectAABB( pos, heading, vec3(0.0), vec3(resolution) );
+    vec2 intersectTime = intersectAABB( pos, heading, vec3(0.0), resolution );
     float nearTime = intersectTime.x;
     if (intersectTime.x > intersectTime.y) {
         result.error = true;
@@ -128,9 +127,9 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
             }
 
             bool isOutOfBounds = 
-                ipos.x < 0 || ipos.x >= int(texSize.x) ||
-                ipos.y < 0 || ipos.y >= int(texSize.y) ||
-                ipos.z < 0 || ipos.z >= int(texSize.z);
+                ipos.x < 0 || ipos.x >= int(resolution.x) ||
+                ipos.y < 0 || ipos.y >= int(resolution.y) ||
+                ipos.z < 0 || ipos.z >= int(resolution.z);
                 
             if(isOutOfBounds)
                 return result;
@@ -151,11 +150,16 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
             }
             consecutiveEmpties = 0u;
 
-            float dist = dot(vec3(ipos) - startPos, heading);
-            float lodFactor = .00125; // Todo: Pull this out into a uniform.
-            if (stepSize > dist * lodFactor && lodLevel > 1u) {
+            // Todo: Calculate texture-lookup-lod from distance instead.
+            vec3 octreeCellCenter = floor(vec3(ipos) / stepSize) * stepSize + vec3(stepSize * .5);
+            float dist = dot(octreeCellCenter - startPos, heading);
+             // Todo: Pull this out into a uniform.
+            float lodFactor = .0025;
+            if (stepSize > dist * lodFactor && lodLevel > 0u) {
                 lodLevel--;
-                pos = previousPos + displacement * (dt - .001);
+                // Even if we're crossing a whole octree-cell, going 75% of the way should
+                // put us in the middle of the child cell adjacent to the obstacle.
+                pos = previousPos + displacement * dt * .75;
                 ipos = ivec3(floor(pos));
                 break;
             }
@@ -163,7 +167,7 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
             result.hit = true;
             result.cell = ipos;
 
-            vec3 hitPos = previousPos + heading * dt;
+            vec3 hitPos = previousPos + displacement * dt;
             result.position = texelToWorld * vec4(hitPos, 1.0);
 
             if(dt == dts.x)

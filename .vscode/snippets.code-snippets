@@ -1,0 +1,14 @@
+{
+	"for-3d": {
+		"scope": "typescript,javascript",
+		"prefix": "for-3d",
+		"body": [
+			"for ( let ${1:z} = 0; ${1:z} < $2; ${1:z}++ ) {",
+			"    for ( let ${3:y} = 0; ${3:y} < $4; ${3:y}++ ) {",
+			"        for ( let ${5:x} = 0; ${5:x} < $6; ${5:x}++ ) {",
+			"        }",
+			"    }",
+			"}",
+		]
+	},
+}

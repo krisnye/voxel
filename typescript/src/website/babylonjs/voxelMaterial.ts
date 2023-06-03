@@ -9,7 +9,7 @@ type VoxelMaterialOptions = {
     getDiffuse?: string,
     getIsOccupied?: string,
     // Todo: Make resolution a Vector3.
-    resolution?: number,
+    resolution?: Vector3,
     maxLod?: number,
     /** Given in model space. */
     texelOrigin?: Vector3,
@@ -25,7 +25,7 @@ export default function voxelMaterial(
     const {
         getIsOccupied = "return getIsOccupided_placeHolder(pos, lod);",
         getDiffuse = "return (traceResult.normal.xyz + vec3(1.0)) / 2.0;",
-        resolution = 200,
+        resolution = new Vector3( 200, 200, 200 ),
         maxLod = 0,
         texelOrigin = new Vector3( .5, .5, .5 ),
         textures,
@@ -53,11 +53,12 @@ export default function voxelMaterial(
 
     const worldToTexel = new Matrix()
     const texelToWorld = new Matrix()
+    const resolutionMax = Math.max( resolution.x, resolution.y, resolution.z )
     const modelToTexel = Matrix.Translation( texelOrigin.x, texelOrigin.y, texelOrigin.z )
-        .multiply( Matrix.Scaling( resolution, resolution, resolution ) )
+        .multiply( Matrix.Scaling( resolutionMax, resolutionMax, resolutionMax ) )
     material.AddUniform( "worldToTexel", "mat4", undefined )
     material.AddUniform( "texelToWorld", "mat4", undefined )
-    material.AddUniform( "resolution", "float", undefined )
+    material.AddUniform( "resolution", "vec3", undefined )
     material.AddUniform( "maxLod", "float", undefined )
 
     material.onBindObservable.add( ( mesh ) => {
@@ -69,7 +70,7 @@ export default function voxelMaterial(
 
         effect.setMatrix( "worldToTexel", worldToTexel )
         effect.setMatrix( "texelToWorld", texelToWorld )
-        effect.setFloat( "resolution", resolution )
+        effect.setVector3( "resolution", resolution )
         effect.setFloat( "maxLod", maxLod )
     } )
 
