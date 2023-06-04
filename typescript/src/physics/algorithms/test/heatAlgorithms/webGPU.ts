@@ -39,7 +39,7 @@ export async function webGPU( v: HeatTransferVolumeType, materials: VoxelMateria
     // create cpu volume
     const volume = Volume.create( [ 4, 4, 4 ], { output: "F32" } );
     // let's write some values to the cpu volume in memory
-    volume.data.output.fill( 6900000 );
+    volume.data.output.fill( 69000 );
     // create gpu volume (we are copying from memory, we could also create without copying)
     const gpuVolume = GPUVolume.createFromCPUVolume( device, volume, { read: true } );
     // run a pass
