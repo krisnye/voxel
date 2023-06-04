@@ -39,14 +39,13 @@ export class VolumePipeline<
     }
 
 
-    static async create<
+    static create<
         Input extends Record<string, GPUTypeId>,
         Output extends Record<string, GPUTypeId>
-    >( props: { input: Input, output: Output, shader: string } )
-        : Promise<VolumePipeline<Input, Output>> {
+    >( device: GPUDevice, props: { input: Input, output: Output, shader: string } )
+        : VolumePipeline<Input, Output> {
         const { input, output, shader } = props;
 
-        const device = await GPUHelper.getDevice();
         // check no input/output names are the same.
         Object.keys( output ).forEach( name => {
             if ( input.hasOwnProperty( name ) ) {

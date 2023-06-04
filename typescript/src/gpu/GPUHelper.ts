@@ -1,18 +1,23 @@
 
+
 export class GPUHelper {
     static readonly supported = globalThis.navigator?.gpu !== undefined;
     private static device?: GPUDevice;
-    static async getDevice() {
-        if ( !GPUHelper.supported ) {
-            throw new Error( "GPUDevice not supported" );
+
+    public static async getDevice(): Promise<GPUDevice | null> {
+        if ( globalThis.navigator?.gpu === undefined ) {
+            return null;
         }
         if ( GPUHelper.device ) {
             return GPUHelper.device;
         }
 
-        const adapter = ( await globalThis.navigator!.gpu!.requestAdapter() )!;
-        const device = ( await adapter.requestDevice() )!;
-        GPUHelper.device = device as any;
+        const adapter = await globalThis.navigator!.gpu!.requestAdapter();
+        if ( !adapter ) {
+            return null;
+        }
+        const device = await adapter.requestDevice() as any as GPUDevice;
+        GPUHelper.device = device;
         return device;
     }
 
@@ -26,4 +31,5 @@ export class GPUHelper {
     static returnReadBuffer( buffer: GPUBuffer ) {
         buffer.destroy();
     }
+
 }

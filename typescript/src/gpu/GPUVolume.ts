@@ -1,7 +1,7 @@
 import { GPUTypeId, typeDescriptors, TypedArrayElementGPUTypeId, bitsToBytes } from "../data/Primitive.js";
 import { Volume } from "../data/Volume.js";
 import { Vector3, X, Y, Z } from "../math/types.js";
-import { StringKeyOf, stringEntries, stringKeys } from "../utils/StringUtils.js";
+import { StringKeyOf, stringEntries } from "../utils/StringUtils.js";
 import { GPUHelper } from "./GPUHelper.js";
 
 export class GPUVolume<Types extends Record<string, GPUTypeId>> {
@@ -48,13 +48,66 @@ export class GPUVolume<Types extends Record<string, GPUTypeId>> {
         return volume;
     }
 
+    private async mapWrite() {
+        //  technically, if you are writing n buffers
+        //  it would be more efficient to start writing as soon as
+        //  any were available instead of waiting for all to be mapped.
+        return Promise.all(
+            Object.values( this.buffers ).map( buffer => buffer.mapAsync( GPUMapMode.WRITE ) )
+        )
+    }
+
+    private unmap() {
+        for ( let name in this.buffers ) {
+            this.buffers[ name ].unmap();
+        }
+    }
+
+    public async writeFromCPU<Types extends Record<string, TypedArrayElementGPUTypeId>>( this: GPUVolume<Types>, volume: Volume<Types> ) {
+        await this.mapWrite();
+        this.writeFromCPUInternal( volume );
+        this.unmap();
+    }
+
+    private writeFromCPUInternal<Types extends Record<string, TypedArrayElementGPUTypeId>>( this: GPUVolume<Types>, volume: Volume<Types> ) {
+        for ( let name in this.buffers ) {
+            const TypedArrayType = typeDescriptors[ this.types[ name ] ].arrayType;
+            const gpuBuffer = this.buffers[ name ];
+            const arrayBuffer = gpuBuffer.getMappedRange();
+            const typedArray = new TypedArrayType( arrayBuffer );
+            typedArray.set( volume.data[ name ] );
+        }
+    }
+
+    static createFromCPUVolume<Types extends Record<string, TypedArrayElementGPUTypeId>>(
+        device: GPUDevice, volume: Volume<Types>, props: { read?: boolean } = {},
+    ) {
+        const gpuVolume = GPUVolume.create( device, {
+            ...props,
+            size: volume.size,
+            types: volume.types,
+            write: true,
+            //  map
+            mappedAtCreation: true
+        } );
+        gpuVolume.writeFromCPUInternal( volume );
+        //  unmap
+        gpuVolume.unmap();
+        return gpuVolume;
+    }
+
     static create<Types extends Record<string, GPUTypeId>>( device: GPUDevice, props: {
         size: Vector3,
         types: Types,
         read?: boolean,
         write?: boolean,
+        /**
+         * If true then ALL GPUBuffers will be mapped and ready for writing at creation time.
+         * You will have to manually unmap them all.
+         */
+        mappedAtCreation?: boolean,
     } ) {
-        const { size, types, read, write } = props;
+        const { size, types, read, mappedAtCreation, write = mappedAtCreation } = props;
         const length = size[ X ] * size[ Y ] * size[ Z ];
         // create buffers
         const buffers = Object.fromEntries( stringEntries( types ).map( ( [ name, type ] ) => {
@@ -68,6 +121,7 @@ export class GPUVolume<Types extends Record<string, GPUTypeId>> {
                 usage |= GPUBufferUsage.COPY_SRC;
             }
             return [ name, device.createBuffer( {
+                mappedAtCreation,
                 size: length * bitsToBytes( typeDescriptors[ type ].bits ),
                 usage
             } ) ];
