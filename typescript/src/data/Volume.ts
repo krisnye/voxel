@@ -1,24 +1,24 @@
 import { Vector3, X, Y, Z } from "../math/types.js";
-import { ArrayTypePrimitive } from "./Primitive.js";
+import { ArrayType, typeDescriptors, TypedArrayElementTypeId } from "./Primitive.js";
 import { StringKeyOf, stringKeys } from "../utils/StringUtils.js";
 
-export class Volume<Types extends Record<string, ArrayTypePrimitive>> {
+export class Volume<Types extends Record<string, TypedArrayElementTypeId>> {
 
     private constructor(
         public readonly size: Vector3,
         public readonly types: Types,
-        public readonly data: { [ K in keyof Types ]: InstanceType<Types[ K ][ "arrayType" ]> }
+        public readonly data: { [ K in keyof Types ]: ArrayType<Types[ K ]> }
     ) {
     }
 
-    static create<T extends Record<string, ArrayTypePrimitive>>(
+    static create<Types extends Record<string, TypedArrayElementTypeId>>(
         size: Vector3,
-        types: T )
-        : Volume<{ [ K in keyof T ]: T[ K ] }> {
+        types: Types
+    ): Volume<Types> {
         const length = size[ X ] * size[ Y ] * size[ Z ];
-        const data = Object.fromEntries( Object.entries( types ).map( ( [ name, { arrayType: Type } ] ) => {
-            return [ name, new Type( length ) ];
-        } ) ) as { [ K in keyof T ]: InstanceType<T[ K ][ "arrayType" ]> };
+        const data = Object.fromEntries( Object.entries( types ).map( ( [ name, typeId ] ) => {
+            return [ name, new typeDescriptors[ typeId ].arrayType( length ) ];
+        } ) ) as { [ K in keyof Types ]: ArrayType<Types[ K ]> };
         return new Volume( size, types, data );
     }
 

@@ -1,4 +1,3 @@
-import { F32 } from "../../../../data/Primitive.js";
 import { Volume } from "../../../../data/Volume.js";
 import { GPUHelper } from "../../../../gpu/GPUHelper.js";
 import { GPUVolume } from "../../../../gpu/GPUVolume.js";
@@ -21,7 +20,7 @@ export async function webGPU( v: HeatTransferVolumeType, materials: VoxelMateria
     const volumePipeline = await VolumePipeline.create( {
         input: {},
         output: {
-            output: F32
+            output: "F32"
         },
         shader: /* wgsl */`
 @compute @workgroup_size(1)
@@ -30,16 +29,12 @@ fn main(
     @builtin(num_workgroups) size : vec3u,
 ) {
     //  this should give me index into volume data
-    let index = workgroup_id.z * size.y * size.x + workgroup_id.y * size.x + workgroup_id.x;
+    let index = (workgroup_id.z * size.y + workgroup_id.y) * size.x + workgroup_id.x;
     output[index] = f32(index);
-    // kody, try these outputs instead to see each value
-    // output[index] = f32(workgroup_id.z);    //  looks good
-    // output[index] = f32(workgroup_id.y);    //  looks wrong
-    // output[index] = f32(workgroup_id.x);    //  looks wrong
 }`} );
 
     // create cpu volume
-    const volume = Volume.create( [ 2, 2, 2 ], { output: F32 } );
+    const volume = Volume.create( [ 4, 4, 4 ], { output: "F32" } );
     const { device } = volumePipeline;
 
     // create gpu volume
@@ -49,6 +44,7 @@ fn main(
     // queue it and wait for finish.
     device.queue.submit( [ commandEncoder.finish() ] );
     await device.queue.onSubmittedWorkDone();
+
     // copy the gpu volume data back to cpu
     const cpuVolume = await gpuVolume.copyToCPU( volume );
     console.log( cpuVolume.toString() );

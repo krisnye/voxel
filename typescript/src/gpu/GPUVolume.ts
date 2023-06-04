@@ -1,10 +1,10 @@
-import { ArrayTypePrimitive, GPUPrimitive, bitsToBytes } from "../data/Primitive.js";
+import { GPUTypeId, typeDescriptors, TypedArrayElementGPUTypeId, bitsToBytes } from "../data/Primitive.js";
 import { Volume } from "../data/Volume.js";
 import { Vector3, X, Y, Z } from "../math/types.js";
 import { StringKeyOf, stringEntries, stringKeys } from "../utils/StringUtils.js";
 import { GPUHelper } from "./GPUHelper.js";
 
-export class GPUVolume<Types extends Record<string, GPUPrimitive>> {
+export class GPUVolume<Types extends Record<string, GPUTypeId>> {
 
     private constructor(
         private readonly device: GPUDevice,
@@ -14,7 +14,7 @@ export class GPUVolume<Types extends Record<string, GPUPrimitive>> {
     ) {
     }
 
-    async copyToCPU<T extends Record<string, GPUPrimitive & ArrayTypePrimitive>>(
+    async copyToCPU<T extends Record<string, TypedArrayElementGPUTypeId>>(
         this: GPUVolume<T>, volume = Volume.create<T>( this.size, this.types )
     ) {
         const encoder = this.device.createCommandEncoder()
@@ -38,7 +38,7 @@ export class GPUVolume<Types extends Record<string, GPUPrimitive>> {
             // copy from to volume data array. NEXT
             const volumeDataArray = volume.data[ name ];
             // copy from the mapped staging buffer range to the volume data
-            volumeDataArray.set( new volume.types[ name ].arrayType( copyArrayBuffer ), 0 )
+            volumeDataArray.set( new typeDescriptors[ volume.types[ name ] ].arrayType( copyArrayBuffer ), 0 )
             // then unmap that staging buffer to release it
             stagingBuffer.unmap();
             // finally, return the staging buffer so it can be reused later.
@@ -48,7 +48,7 @@ export class GPUVolume<Types extends Record<string, GPUPrimitive>> {
         return volume;
     }
 
-    static create<Types extends Record<string, GPUPrimitive>>( device: GPUDevice, props: {
+    static create<Types extends Record<string, GPUTypeId>>( device: GPUDevice, props: {
         size: Vector3,
         types: Types,
         read?: boolean,
@@ -68,7 +68,7 @@ export class GPUVolume<Types extends Record<string, GPUPrimitive>> {
                 usage |= GPUBufferUsage.COPY_SRC;
             }
             return [ name, device.createBuffer( {
-                size: length * bitsToBytes( type.bits ),
+                size: length * bitsToBytes( typeDescriptors[ type ].bits ),
                 usage
             } ) ];
         } ) );
