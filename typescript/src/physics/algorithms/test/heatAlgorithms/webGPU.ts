@@ -41,7 +41,7 @@ export async function webGPU( v: HeatTransferVolumeType, materials: VoxelMateria
     // let's write some values to the cpu volume in memory
     volume.data.output.fill( 6900000 );
     // create gpu volume (we are copying from memory, we could also create without copying)
-    const gpuVolume = await GPUVolume.createFromCPUVolume( device, volume, { read: true } );
+    const gpuVolume = GPUVolume.createFromCPUVolume( device, volume, { read: true } );
     // run a pass
     const commandEncoder = volumePipeline.encodePass( gpuVolume );
     // queue it and wait for finish.
