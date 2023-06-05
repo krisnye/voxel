@@ -54,13 +54,15 @@ export class Volume<Types extends Record<string, TypedArrayElementTypeId>> {
     public dataToString( name: StringKeyOf<Types>, options?: ToStringOptions ) {
         const length = 8;
         const array = this.data[ name ];
-        const isFloat = this.types[ name ].startsWith( "F" );
+        const isFloat = this.types[ name ].startsWith( "f" );
         let sb = `  ${ name }:\n\n`;
         for ( let z = 0; z < this.size[ Z ]; z++ ) {
             for ( let y = 0; y < this.size[ Y ]; y++ ) {
                 for ( let x = 0; x < this.size[ X ]; x++ ) {
                     let value = array[ this.index( x, y, z ) ];
-                    let valueString = options?.radix ? value.toString( options?.radix ).toUpperCase() : value.toFixed( isFloat ? 2 : 0 );
+                    let valueString = options?.radix
+                        ? value.toString( options?.radix ).toUpperCase()
+                        : value.toFixed( isFloat ? ( options?.fractionDigits ?? 4 ) : 0 );
                     valueString = valueString.slice( 0, length ).padStart( length, " " );
                     sb += valueString + ", ";
                 }
@@ -72,10 +74,10 @@ export class Volume<Types extends Record<string, TypedArrayElementTypeId>> {
     }
 
     toString( options?: ToStringOptions ) {
-        return `Volume${ this.size }\n\n` +
+        return `Volume${ this.size } ${ JSON.stringify( this.types ) }\n\n` +
             stringKeys( this.data ).map( name => this.dataToString( name, options ) ).join( "\n" );
     }
 
 }
 
-type ToStringOptions = { radix?: number };
+type ToStringOptions = { radix?: number, fractionDigits?: number };

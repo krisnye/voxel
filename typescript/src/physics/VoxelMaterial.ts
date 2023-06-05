@@ -1,5 +1,5 @@
 import { Volume } from "../data/Volume.js";
-import { Distance, Mass, Material, MaterialId, Type } from "./types.js";
+import { Distance, Material, MaterialId, Type } from "./types.js";
 
 //  Watts / Kelvin
 export type VoxelThermalResistance = number;
@@ -26,6 +26,7 @@ function toVoxelMaterial( m: Material, length: Distance ): VoxelMaterial {
         case Type.grain:
         case Type.liquid:
             mass = m.density * volume;
+            console.log( { mass, density: m.density, volume, length } );
             //  see heatTranfer.ts
             thermalResistance = 1.0 / ( 2.0 * m.thermalConductivity * length );
             heatCapacity = mass * m.specificHeatCapacity;

@@ -10,6 +10,7 @@ const useBig = true;
 const size: [ number, number, number ] = useBig ? [ 256, 256, 256 ] : [ 4, 1, 4 ];
 
 export const decimeterVoxelMaterials = toVoxelMaterialLookupVolume( materials, 0.1 );
+console.log( decimeterVoxelMaterials.toString() );
 export type HeatTransferVolumeType = Volume<{
     material: "u8";
     temperature: "f32";
