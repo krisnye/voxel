@@ -18,11 +18,14 @@ export async function webGPU( v: HeatTransferVolumeType, materials: VoxelMateria
         return null;
     }
 
+    // works with any data type.
+    const dataType = "u32"; // "f32", "i32"
+
     // create volume gpu pipeline
     const volumePipeline = VolumePipeline.create( device, {
         input: {},
         output: {
-            output: "F32"
+            output: dataType
         },
         shader: /* wgsl */`
             @compute @workgroup_size(1)
@@ -32,14 +35,14 @@ export async function webGPU( v: HeatTransferVolumeType, materials: VoxelMateria
             ) {
                 //  this should give me index into volume data
                 let index = (workgroup_id.z * num_workgroups.y + workgroup_id.y) * num_workgroups.x + workgroup_id.x;
-                output[index] += f32(index);
+                output[index] += ${ dataType }(index);
             }
     `} );
 
     // create cpu volume
-    const volume = Volume.create( [ 4, 4, 4 ], { output: "F32" } );
+    const volume = Volume.create( [ 4, 4, 4 ], { output: dataType } );
     // let's write some values to the cpu volume in memory
-    volume.data.output.fill( 69000 );
+    volume.data.output.fill( 0xFF0000 );
     // create gpu volume (we are copying from memory, we could also create without copying)
     const gpuVolume = GPUVolume.createFromCPUVolume( device, volume, { read: true } );
     // run a pass
@@ -50,7 +53,7 @@ export async function webGPU( v: HeatTransferVolumeType, materials: VoxelMateria
     // copy the gpu volume data back to cpu
     await gpuVolume.copyToCPU( volume );
 
-    console.log( volume.toString() );
+    console.log( volume.toString( { radix: 16 } ) );
 
     return async () => {
         console.log( "HELLO WEBGPU" );

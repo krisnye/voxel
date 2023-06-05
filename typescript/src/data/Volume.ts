@@ -48,14 +48,17 @@ export class Volume<Types extends Record<string, TypedArrayElementTypeId>> {
         return x + ( y + ( z * sizeY ) ) * sizeX;
     }
 
-    public dataToString( name: StringKeyOf<Types> ) {
+    public dataToString( name: StringKeyOf<Types>, options?: ToStringOptions ) {
         const length = 8;
         const array = this.data[ name ];
+        const isFloat = this.types[ name ].startsWith( "F" );
         let sb = `  ${ name }:\n\n`;
         for ( let z = 0; z < this.size[ Z ]; z++ ) {
             for ( let y = 0; y < this.size[ Y ]; y++ ) {
                 for ( let x = 0; x < this.size[ X ]; x++ ) {
-                    let valueString = array[ this.index( x, y, z ) ].toFixed( 2 ).slice( 0, length ).padStart( length, " " );
+                    let value = array[ this.index( x, y, z ) ];
+                    let valueString = options?.radix ? value.toString( options?.radix ).toUpperCase() : value.toFixed( isFloat ? 2 : 0 );
+                    valueString = valueString.slice( 0, length ).padStart( length, " " );
                     sb += valueString + ", ";
                 }
                 sb += "\n";
@@ -65,9 +68,11 @@ export class Volume<Types extends Record<string, TypedArrayElementTypeId>> {
         return sb;
     }
 
-    toString() {
+    toString( options?: ToStringOptions ) {
         return `Volume${ this.size }\n\n` +
-            stringKeys( this.data ).map( this.dataToString.bind( this ) ).join( "\n" );
+            stringKeys( this.data ).map( name => this.dataToString( name, options ) ).join( "\n" );
     }
 
 }
+
+type ToStringOptions = { radix?: number };

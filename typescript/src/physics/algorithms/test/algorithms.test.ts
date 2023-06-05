@@ -11,16 +11,16 @@ const size: [ number, number, number ] = useBig ? [ 256, 256, 256 ] : [ 4, 1, 4 
 
 export const decimeterVoxelMaterials = toVoxelMaterials( materials, 0.1 );
 export type HeatTransferVolumeType = Volume<{
-    material: "U8";
-    temperature: "F32";
-    heat: "F32";
+    material: "u8";
+    temperature: "f32";
+    heat: "f32";
 }>;
 
 export type TestAlgorithm = ( v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number ) => Promise<null | ( () => Promise<void> )>;
 
 export async function runTests() {
     const timeStep = 1 / 30;
-    const volume = Volume.create( size, { material: "U8", temperature: "F32", heat: "F32" } );
+    const volume = Volume.create( size, { material: "u8", temperature: "f32", heat: "f32" } );
     function resetVolume() {
         fillWithTestMaterial( volume );
         //  add some temperature to one of the locations, the rest are at absolute zero.

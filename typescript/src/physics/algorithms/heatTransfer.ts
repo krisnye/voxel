@@ -49,10 +49,10 @@ function calculateVoxelHeat(
 export function calculateHeat(
     volume: Volume<{
         //  read
-        material: "U8",
-        temperature: "F32",
+        material: "u8",
+        temperature: "f32",
         //  write
-        heat: "F32"
+        heat: "f32"
     }>,
     materials: VoxelMaterial[]
 ) {
@@ -106,10 +106,10 @@ export function calculateHeat(
 export function applyHeat(
     volume: Volume<{
         //  read
-        material: "U8",
-        heat: "F32"
+        material: "u8",
+        heat: "f32"
         //  write
-        temperature: "F32",
+        temperature: "f32",
     }>,
     materials: VoxelMaterial[],
     time: Time,
@@ -134,8 +134,8 @@ export function applyHeat(
 export function totalHeatEnergy(
     volume: Volume<{
         //  read
-        material: "U8",
-        temperature: "F32",
+        material: "u8",
+        temperature: "f32",
     }>,
     materials: VoxelMaterial[],
 ) {

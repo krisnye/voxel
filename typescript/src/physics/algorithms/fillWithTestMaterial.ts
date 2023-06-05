@@ -3,7 +3,7 @@ import { Volume } from "../../data/Volume.js";
 import { materials } from "../materials.js";
 import { Kelvin } from "../constants.js";
 
-export function fillWithTestMaterial( volume: Volume<{ material: "U8" }> ) {
+export function fillWithTestMaterial( volume: Volume<{ material: "u8" }> ) {
     const { size } = volume;
     const alternateMaterials = [ materials.rock, materials.iron, materials.woodHard, materials.dirt ];
     //  fill bottom half with rock, top with air
@@ -20,7 +20,7 @@ export function fillWithTestMaterial( volume: Volume<{ material: "U8" }> ) {
     return volume;
 }
 
-export function addCornerHeatSourceAndSink( volume: Volume<{ material: "U8", temperature: "F32" }> ) {
+export function addCornerHeatSourceAndSink( volume: Volume<{ material: "u8", temperature: "f32" }> ) {
     let hot = 0;
     let cold = volume.data.material.length - 1;
     volume.data.material[ hot ] = volume.data.material[ cold ] = materials.infiniteHeatCapacity.id;
