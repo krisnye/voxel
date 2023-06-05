@@ -13,19 +13,22 @@ export class Volume<Types extends Record<string, TypedArrayElementTypeId>> {
 
     static create<Types extends Record<string, TypedArrayElementTypeId>>(
         size: Vector3,
-        types: Types
+        types: Types,
+        data?: { [ K in keyof Types ]: ArrayType<Types[ K ]> }
     ): Volume<Types> {
         const length = size[ X ] * size[ Y ] * size[ Z ];
-        const data = Object.fromEntries( Object.entries( types ).map( ( [ name, typeId ] ) => {
-            return [ name, new typeDescriptors[ typeId ].arrayType( length ) ];
-        } ) ) as { [ K in keyof Types ]: ArrayType<Types[ K ]> };
+        if ( !data ) {
+            data = Object.fromEntries( Object.entries( types ).map( ( [ name, typeId ] ) => {
+                return [ name, new typeDescriptors[ typeId ].arrayType( length ) ];
+            } ) ) as { [ K in keyof Types ]: ArrayType<Types[ K ]> };
+        }
         return new Volume( size, types, data );
     }
 
     /**
      * @returns the index of this voxel or else < 0 if value is out of bounds.
      */
-    index( x: number, y: number, z: number ) {
+    index( x: number, y: number = 0.0, z: number = 0.0 ) {
         const [ sizeX, sizeY, sizeZ ] = this.size;
         if ( x < 0 ) {
             return -1;

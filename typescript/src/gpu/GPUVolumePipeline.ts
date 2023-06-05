@@ -1,6 +1,5 @@
 import { GPUTypeId, typeDescriptors } from "../data/Primitive.js";
 import { stringEntries, stringKeys } from "../utils/StringUtils.js";
-import { GPUHelper } from "./GPUHelper.js";
 import { GPUVolume } from "./GPUVolume.js";
 
 export class VolumePipeline<
@@ -15,7 +14,7 @@ export class VolumePipeline<
     ) {
     }
 
-    encodePass( volume: GPUVolume<Input & Output>, encoder = this.device.createCommandEncoder() ) {
+    encodePass( volume: Pick<GPUVolume<Input & Output>, "size" | "types" | "buffers">, encoder = this.device.createCommandEncoder() ) {
         const bindGroup = this.device.createBindGroup( {
             layout: this.layout,
             entries: stringKeys( volume.types ).map( ( name, index ) => {
@@ -59,6 +58,7 @@ export class VolumePipeline<
         const shaderModule = device.createShaderModule( { code } );
         // create bindGroupLayout with bindings for each data type in the volume
         const bindGroupLayout = device.createBindGroupLayout( {
+            //  TODO: We should store the name to binding index values and use later for execution.
             entries: stringKeys( bindings ).map( ( name, index ) => ( {
                 binding: index,
                 visibility: GPUShaderStage.COMPUTE,

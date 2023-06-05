@@ -1,6 +1,6 @@
 import { Volume } from "../../data/Volume.js";
 import { X, Y, Z } from "../../math/types.js";
-import { VoxelMaterial } from "../VoxelMaterial.js";
+import { MaterialLookup, MaterialProperty, VoxelMaterial, getMaterialProperty } from "../VoxelMaterial.js";
 import { Time } from "../types.js";
 
 //  https://www.khanacademy.org/science/physics/thermodynamics/specific-heat-and-heat-transfer/a/what-is-thermal-conductivity
@@ -30,15 +30,17 @@ function calculateVoxelHeat(
     temperatureFrom: number,
     materialIdTo: number,
     temperatureTo: number,
-    materials: VoxelMaterial[],
+    materials: MaterialLookup,
 ) {
-    const materialFrom = materials[ materialIdFrom ];
-    const materialTo = materials[ materialIdTo ];
-    if ( !materialFrom.mass || !materialTo.mass ) {
+    const materialFromMass = getMaterialProperty( materials, materialIdFrom, MaterialProperty.mass );
+    const materialToMass = getMaterialProperty( materials, materialIdTo, MaterialProperty.mass );
+    if ( materialFromMass === 0.0 || materialToMass === 0.0 ) {
         return 0.0;
     }
+    const materialFromThermalResistance = getMaterialProperty( materials, materialIdFrom, MaterialProperty.thermalResistance );
+    const materialToThermalResistance = getMaterialProperty( materials, materialIdTo, MaterialProperty.thermalResistance );
     //  resistance in series.
-    const thermalResistance = materialFrom.thermalResistance + materialTo.thermalResistance;
+    const thermalResistance = materialFromThermalResistance + materialToThermalResistance;
     //  heat transfer is directly proportional to the temperature difference.
     const temperatureDifference = temperatureFrom - temperatureTo;
     //  heat transfer is inversely proportional to thermal resistance.
@@ -54,7 +56,7 @@ export function calculateHeat(
         //  write
         heat: "f32"
     }>,
-    materials: VoxelMaterial[]
+    materials: MaterialLookup
 ) {
     const { size, data: { material, temperature, heat } } = volume;
 
@@ -111,22 +113,23 @@ export function applyHeat(
         //  write
         temperature: "f32",
     }>,
-    materials: VoxelMaterial[],
+    materials: MaterialLookup,
     time: Time,
 ) {
     const { data: { material, temperature, heat } } = volume;
     const length = volume.data.material.length;
     // this is completely parallelizable.
     for ( let i = 0; i < length; i++ ) {
-        const voxelMaterial = materials[ material[ i ] ];
-        if ( !voxelMaterial.mass ) {
+        const materialMass = getMaterialProperty( materials, material[ i ], MaterialProperty.mass );
+        if ( materialMass === 0.0 ) {
             continue;
         }
+        const voxelHeatCapacity = getMaterialProperty( materials, material[ i ], MaterialProperty.heatCapacity );
         const voxelHeat = heat[ i ];
         //  heat is power, power * time = energy
         const heatEnergy = voxelHeat * time;
         //  energy / heatCapacity = temperature change in kelvin
-        const temperatureChange = heatEnergy / voxelMaterial.heatCapacity;
+        const temperatureChange = heatEnergy / voxelHeatCapacity;
         temperature[ i ] += temperatureChange;
     }
 }
@@ -137,17 +140,21 @@ export function totalHeatEnergy(
         material: "u8",
         temperature: "f32",
     }>,
-    materials: VoxelMaterial[],
+    materials: MaterialLookup,
 ) {
     const { data: { material, temperature } } = volume;
     const length = volume.data.material.length;
     let total = 0.0;
     for ( let i = 0; i < length; i++ ) {
-        const voxelMaterial = materials[ material[ i ] ];
-        if ( !voxelMaterial.mass || !Number.isFinite( voxelMaterial.heatCapacity ) ) {
+        const materialMass = getMaterialProperty( materials, material[ i ], MaterialProperty.mass );
+        if ( materialMass === 0.0 ) {
             continue;
         }
-        total += voxelMaterial.heatCapacity * temperature[ i ];
+        const voxelHeatCapacity = getMaterialProperty( materials, material[ i ], MaterialProperty.heatCapacity );
+        if ( !Number.isFinite( voxelHeatCapacity ) ) {
+            continue;
+        }
+        total += voxelHeatCapacity * temperature[ i ];
     }
     return total;
 }

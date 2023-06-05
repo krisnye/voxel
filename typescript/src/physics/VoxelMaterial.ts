@@ -1,36 +1,45 @@
-import { Distance, Mass, Material, Type } from "./types.js";
+import { Volume } from "../data/Volume.js";
+import { Distance, Mass, Material, MaterialId, Type } from "./types.js";
 
 //  Watts / Kelvin
-export type VoxelConductivity = number;
+export type VoxelThermalResistance = number;
 
 //  Joules / Kelvin
 export type VoxelHeatCapacity = number;
 
-export interface VoxelMaterial {
-    mass?: Mass;
-    thermalResistance: VoxelConductivity;
-    heatCapacity: VoxelHeatCapacity;
+export type VoxelMaterial = Array<number> & { length: 3 } & { [ key in MaterialProperty ]: number };
+export enum MaterialProperty {
+    mass = 0,
+    thermalResistance = 1,
+    heatCapacity = 2,
 }
+export type MaterialLookup = Volume<{ lookup: "f32" }>;
 
 function toVoxelMaterial( m: Material, length: Distance ): VoxelMaterial {
     const volume = length * length * length;
+    let mass: number, thermalResistance: number, heatCapacity: number;
     switch ( m.type ) {
         case Type.gas:
-            return { thermalResistance: 0, heatCapacity: 0 };
+            mass = thermalResistance = heatCapacity = 0.0;
+            break;
         case Type.solid:
         case Type.grain:
         case Type.liquid:
-            const mass = m.density * volume;
+            mass = m.density * volume;
             //  see heatTranfer.ts
-            const thermalResistance = 1.0 / ( 2.0 * m.thermalConductivity * length );
-            return {
-                mass,
-                thermalResistance,
-                heatCapacity: mass * m.specificHeatCapacity
-            };
+            thermalResistance = 1.0 / ( 2.0 * m.thermalConductivity * length );
+            heatCapacity = mass * m.specificHeatCapacity;
+            break;
     }
+    return [ mass, thermalResistance, heatCapacity ];
 }
 
-export function toVoxelMaterials( materials: Material[], length: Distance ): VoxelMaterial[] {
-    return materials.map( material => toVoxelMaterial( material, length ) );
+export function toVoxelMaterialLookupVolume( materials: Material[], length: Distance ): MaterialLookup {
+    const values = materials.map( material => toVoxelMaterial( material, length ) ).flat();
+    return Volume.create( [ 3, materials.length, 1 ], { lookup: "f32" }, { lookup: new Float32Array( values ) } );
+}
+
+export function getMaterialProperty( materials: MaterialLookup, type: MaterialId, property: MaterialProperty ) {
+    const index = materials.index( property, type, 0 );
+    return materials.data.lookup[ index ];
 }

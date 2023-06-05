@@ -1,5 +1,5 @@
 import { Volume } from "../../../data/Volume.js";
-import { VoxelMaterial, toVoxelMaterials } from "../../VoxelMaterial.js";
+import { MaterialLookup, VoxelMaterial, toVoxelMaterialLookupVolume } from "../../VoxelMaterial.js";
 import { Kelvin } from "../../constants.js";
 import { materials } from "../../materials.js";
 import { addCornerHeatSourceAndSink, fillWithTestMaterial } from "../fillWithTestMaterial.js";
@@ -9,14 +9,14 @@ import { algorithms } from "./heatAlgorithms/index.js";
 const useBig = true;
 const size: [ number, number, number ] = useBig ? [ 256, 256, 256 ] : [ 4, 1, 4 ];
 
-export const decimeterVoxelMaterials = toVoxelMaterials( materials, 0.1 );
+export const decimeterVoxelMaterials = toVoxelMaterialLookupVolume( materials, 0.1 );
 export type HeatTransferVolumeType = Volume<{
     material: "u8";
     temperature: "f32";
     heat: "f32";
 }>;
 
-export type TestAlgorithm = ( v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number ) => Promise<null | ( () => Promise<void> )>;
+export type TestAlgorithm = ( v: HeatTransferVolumeType, materials: MaterialLookup, timeStep: number ) => Promise<null | ( () => Promise<void> )>;
 
 export async function runTests() {
     const timeStep = 1 / 30;

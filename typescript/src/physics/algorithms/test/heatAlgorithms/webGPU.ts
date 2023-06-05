@@ -2,7 +2,7 @@ import { Volume } from "../../../../data/Volume.js";
 import { GPUHelper } from "../../../../gpu/GPUHelper.js";
 import { GPUVolume } from "../../../../gpu/GPUVolume.js";
 import { VolumePipeline } from "../../../../gpu/GPUVolumePipeline.js";
-import { VoxelMaterial } from "../../../VoxelMaterial.js";
+import { MaterialLookup } from "../../../VoxelMaterial.js";
 import { HeatTransferVolumeType } from "../algorithms.test.js";
 
 
@@ -11,7 +11,7 @@ import { HeatTransferVolumeType } from "../algorithms.test.js";
 //  pipeline is called with a workgroup count: uvec3
 //  total invocations = workgroup size * workgroup count
 
-export async function webGPU( v: HeatTransferVolumeType, materials: VoxelMaterial[], timeStep: number ) {
+export async function webGPU( v: HeatTransferVolumeType, materials: MaterialLookup, timeStep: number ) {
 
     const device = await GPUHelper.getDevice();
     if ( !device ) {
