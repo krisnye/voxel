@@ -3,28 +3,32 @@ import { stringEntries, stringKeys } from "../utils/StringUtils.js";
 import { GPUVolume } from "./GPUVolume.js";
 
 export class VolumePipeline<
-    Input extends Record<string, GPUTypeId>,
-    Output extends Record<string, GPUTypeId>
+    Bindings extends Record<string, GPUTypeId>
 > {
 
     private constructor(
         public readonly device: GPUDevice,
         public readonly layout: GPUBindGroupLayout,
         public readonly pipeline: GPUComputePipeline,
+        private readonly bindings: string[],
     ) {
     }
 
-    encodePass( volume: Pick<GPUVolume<Input & Output>, "size" | "types" | "buffers">, encoder = this.device.createCommandEncoder() ) {
+    encodePass( volume: Pick<GPUVolume<Bindings>, "size" | "buffers">, encoder = this.device.createCommandEncoder() ) {
         const bindGroup = this.device.createBindGroup( {
             layout: this.layout,
-            entries: stringKeys( volume.types ).map( ( name, index ) => {
+            entries: this.bindings.map( ( name, index ) => {
+                const buffer = volume.buffers[ name ];
+                if ( !buffer ) {
+                    throw new Error( `Buffer not found: ${ name }` );
+                }
                 return {
                     binding: index,
                     resource: {
-                        buffer: volume.buffers[ name ]
+                        buffer
                     }
                 }
-            } )
+            } ),
         } );
 
         // create pass encoder for each pass
@@ -37,29 +41,19 @@ export class VolumePipeline<
         return encoder;
     }
 
-
     static create<
-        Input extends Record<string, GPUTypeId>,
-        Output extends Record<string, GPUTypeId>
-    >( device: GPUDevice, props: { input: Input, output: Output, shader: string } )
-        : VolumePipeline<Input, Output> {
-        const { input, output, shader } = props;
+        Bindings extends Record<string, GPUTypeId>,
+    >( device: GPUDevice, props: { bindings: Bindings, shader: string } )
+        : VolumePipeline<Bindings> {
+        const { bindings, shader } = props;
 
-        // check no input/output names are the same.
-        Object.keys( output ).forEach( name => {
-            if ( input.hasOwnProperty( name ) ) {
-                throw new Error( `Input and output both have same named field: ${ name }` );
-            }
-        } )
-        const bindings = { ...input, ...output }
         // create GPUShaderModule
-        const declarations = `${ stringEntries( bindings ).map( ( [ name, type ], index ) => `@group(0) @binding(${ index })\nvar<storage, read_write> ${ name }: array<${ typeDescriptors[ type ].gpuType }>;\n` ) }`;
+        const declarations = `${ stringEntries( bindings ).map( ( [ name, type ], index ) => `@group(0) @binding(${ index })\nvar<storage, read_write> ${ name }: array<${ typeDescriptors[ type ].gpuType }>;\n` ).join( "" ) }`;
         const code = `${ declarations }${ shader }`;
         const shaderModule = device.createShaderModule( { code } );
         // create bindGroupLayout with bindings for each data type in the volume
         const bindGroupLayout = device.createBindGroupLayout( {
-            //  TODO: We should store the name to binding index values and use later for execution.
-            entries: stringKeys( bindings ).map( ( name, index ) => ( {
+            entries: stringKeys( bindings ).map( ( _name, index ) => ( {
                 binding: index,
                 visibility: GPUShaderStage.COMPUTE,
                 buffer: {
@@ -78,6 +72,6 @@ export class VolumePipeline<
             },
         } );
 
-        return new VolumePipeline( device as any, bindGroupLayout, computePipeline );
+        return new VolumePipeline( device as any, bindGroupLayout, computePipeline, Object.keys( bindings ) );
     }
 }

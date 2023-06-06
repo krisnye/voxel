@@ -26,7 +26,6 @@ function toVoxelMaterial( m: Material, length: Distance ): VoxelMaterial {
         case Type.grain:
         case Type.liquid:
             mass = m.density * volume;
-            console.log( { mass, density: m.density, volume, length } );
             //  see heatTranfer.ts
             thermalResistance = 1.0 / ( 2.0 * m.thermalConductivity * length );
             heatCapacity = mass * m.specificHeatCapacity;

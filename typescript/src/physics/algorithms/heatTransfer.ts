@@ -51,7 +51,7 @@ function calculateVoxelHeat(
 export function calculateHeat(
     volume: Volume<{
         //  read
-        material: "u8",
+        material: "u32",
         temperature: "f32",
         //  write
         heat: "f32"
@@ -108,7 +108,7 @@ export function calculateHeat(
 export function applyHeat(
     volume: Volume<{
         //  read
-        material: "u8",
+        material: "u32",
         heat: "f32"
         //  write
         temperature: "f32",

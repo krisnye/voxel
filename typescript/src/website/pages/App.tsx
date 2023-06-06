@@ -3,7 +3,6 @@ import useHashState from "../hooks/useHashState";
 
 export function App() {
     const [ page, setPage ] = useHashState( undefined );
-    console.log( page )
     if ( page ) {
         return pages[ page ].component();
     }

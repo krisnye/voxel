@@ -74,7 +74,7 @@ export class Volume<Types extends Record<string, TypedArrayElementTypeId>> {
     }
 
     toString( options?: ToStringOptions ) {
-        return `Volume${ this.size } ${ JSON.stringify( this.types ) }\n\n` +
+        return `Volume${ JSON.stringify( { size: this.size, types: this.types } ) }\n\n` +
             stringKeys( this.data ).map( name => this.dataToString( name, options ) ).join( "\n" );
     }
 
