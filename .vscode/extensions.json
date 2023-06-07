@@ -1,5 +1,6 @@
 {
     "recommendations": [
-        "ggsimm.wgsl-literal"
+        "ggsimm.wgsl-literal",
+        "dtoplak.vscode-glsllint"
     ]
 }
