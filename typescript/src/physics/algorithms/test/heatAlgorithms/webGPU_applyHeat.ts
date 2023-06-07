@@ -1,5 +1,5 @@
-import { VolumePipeline } from "../../../../gpu/GPUVolumePipeline";
-import { sharedFunctions } from "./webGPU_calculateHeat";
+import { VolumePipeline } from "../../../../gpu/GPUVolumePipeline.js";
+import { sharedFunctions } from "./webGPU_calculateHeat.js";
 
 export function createApplyHeatVolumePipeline( device: GPUDevice ) {
     // create volume gpu pipeline

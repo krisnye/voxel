@@ -45,3 +45,7 @@ export async function webGPU( volume: HeatTransferVolumeType, lookup: MaterialLo
     }
 
 }
+
+//  test 256^3 10 passes
+//  cpu 41210
+//  gpu   646       it' about 110ms + 50ms per iteration.

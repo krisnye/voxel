@@ -14,7 +14,7 @@ export class VolumePipeline<
     ) {
     }
 
-    encodePass( volume: Pick<GPUVolume<Bindings>, "size" | "buffers">, encoder = this.device.createCommandEncoder() ) {
+    encodePass( volume: Pick<GPUVolume<Bindings>, "size" | "buffers">, encoder: GPUCommandEncoder ) {
         const bindGroup = this.device.createBindGroup( {
             layout: this.layout,
             entries: this.bindings.map( ( name, index ) => {
@@ -34,6 +34,7 @@ export class VolumePipeline<
         // create pass encoder for each pass
         const passEncoder = encoder.beginComputePass();
         passEncoder.setPipeline( this.pipeline );
+        // doesn't take any significant time.
         passEncoder.setBindGroup( 0, bindGroup );
         passEncoder.dispatchWorkgroups( ...volume.size );
         passEncoder.end();

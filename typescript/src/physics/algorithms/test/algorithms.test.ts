@@ -29,7 +29,7 @@ export async function runTests() {
         addCornerHeatSourceAndSink( volume );
     }
 
-    const iterations = 1;
+    const iterations = 10;
     for ( const [ name, algorithm ] of Object.entries( algorithms ) ) {
         resetVolume();
         const runOnce = await algorithm( volume, decimeterVoxelMaterials, timeStep, iterations );

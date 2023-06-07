@@ -1,4 +1,4 @@
-import { VolumePipeline } from "../../../../gpu/GPUVolumePipeline";
+import { VolumePipeline } from "../../../../gpu/GPUVolumePipeline.js";
 
 export const sharedFunctions = /* wgsl */`
 const MaterialProperty_mass = 0;
