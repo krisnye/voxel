@@ -1,12 +1,13 @@
 import React from "preact"
 import SceneComponent from "./SceneComponent"
 import {
-    Engine, Scene, FxaaPostProcess, Color4, TransformNode, Vector3, Texture
+    Engine, Scene, FxaaPostProcess, Color4, TransformNode, Vector3, Texture, StandardMaterial
 } from "@babylonjs/core"
 import { addDefaultLights, defaultCamera, groupNodes } from "../babylonjs/BabylonUtils"
 import voxelMaterial from "../babylonjs/voxelMaterial"
 import voxelChunkNode from "../babylonjs/voxelChunkNode"
 import VoxelOctree from "../babylonjs/VoxelOctree"
+import { voxelMaterialWebGPU } from "../babylonjs/voxelMaterialWebGPU"
 
 export default function VoxelTestScene() {
 
@@ -14,28 +15,31 @@ export default function VoxelTestScene() {
         scene.clearColor = new Color4( 0, 0, 0, 0 )
         addDefaultLights( scene )
         const camera = defaultCamera( scene )
-        const fxaa = new FxaaPostProcess( "fxaa", 1.0, camera )
+        // const fxaa = new FxaaPostProcess( "fxaa", 1.0, camera )
 
-        const sceneOctree = createSceneOctree( scene )
-        const voxelOctreeTexture = sceneOctree.buildTexture( scene )
+        // const sceneOctree = createSceneOctree( scene )
+        // const voxelOctreeTexture = sceneOctree.buildTexture( scene )
 
-        const voxelMaterialIns = voxelMaterial( scene, {
-            fragDefinitions: VoxelOctree.glsl_sampleOctree,
-            getIsOccupied: `
-                return sampleOctree(voxelOctreeTexture, pos, lod);
-            `,
-            getDiffuse: `
-                vec3 normal = traceResult.normal.xyz;
-                return (normal + vec3(1.0)) / 2.0;
-            `,
-            maxLod: voxelOctreeTexture.metadata.lodLevels - 1,
-            resolution: new Vector3( sceneOctree.width, sceneOctree.height, sceneOctree.depth ),
-            textures: {
-                voxelOctreeTexture: { type: "lowp usampler3D", value: voxelOctreeTexture }
-            },
-        } )
+        // const voxelMaterialIns = voxelMaterial( scene, {
+        //     fragDefinitions: VoxelOctree.glsl_sampleOctree,
+        //     getIsOccupied: `
+        //         return sampleOctree(voxelOctreeTexture, pos, lod);
+        //     `,
+        //     getDiffuse: `
+        //         vec3 normal = traceResult.normal.xyz;
+        //         return (normal + vec3(1.0)) / 2.0;
+        //     `,
+        //     maxLod: voxelOctreeTexture.metadata.lodLevels - 1,
+        //     resolution: new Vector3( sceneOctree.width, sceneOctree.height, sceneOctree.depth ),
+        //     textures: {
+        //         voxelOctreeTexture: { type: "lowp usampler3D", value: voxelOctreeTexture }
+        //     },
+        // } )
 
-        camera.speed *= 128 / sceneOctree.width
+        // const voxelMaterialIns = new StandardMaterial( "VoxelMaterial", scene )
+        const voxelMaterialIns = voxelMaterialWebGPU( "VoxelMaterial", {}, scene )
+
+        // camera.speed *= 128 / sceneOctree.width
 
         let chunkNodes = [] as TransformNode[]
         const widthInChunks = 1
@@ -58,7 +62,7 @@ export default function VoxelTestScene() {
     }
 
     return <div className="fullscreen relative">
-        <SceneComponent onInitialize={onSceneInit} className="absolute no-outline" />
+        <SceneComponent webGPU onInitialize={onSceneInit} className="absolute no-outline" />
 
         <div id="fpsCounter" className={"absolute"} style={{
             backgroundColor: "rgba(52,52,52,.75)",
