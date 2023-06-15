@@ -35,13 +35,16 @@ export function voxelMaterialWebGPU( name: string, options: Options, scene: Scen
     
             @fragment
             fn main(input : FragmentInputs) -> FragmentOutputs {
-                let pos = vec3i(fragmentInputs.vPos * 10.0 + vec3f(.5));
-                let i = pos.x + pos.y + pos.z;
+                // fragmentOutputs.color = vec4f(1.0, 0.0, 0.0, 1.0);
+                fragmentOutputs.color = vec4f(fragmentInputs.vNormal * .5 + vec3f(.5), 0.0);
+
+                let epsilon = 1.0001;
+                let pos = vec3f(fragmentInputs.vPos);
+                let i = dot(vec3i(floor(fract(pos * 10.0/epsilon) * 2.0)), vec3i(1));
                 let imod = i % 2;
+
                 if (imod == 0) {
-                    fragmentOutputs.color = vec4f(1.0, 0.0, 0.0, 1.0);
-                } else {
-                    fragmentOutputs.color = vec4f(0.0, 1.0, 1.0, 1.0);
+                    fragmentOutputs.color *= .5;
                 }
             }
         `
