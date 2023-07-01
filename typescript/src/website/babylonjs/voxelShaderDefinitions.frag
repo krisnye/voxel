@@ -19,7 +19,7 @@ vec3 multVec3(mat4 mat, vec3 v, float w) {
     return (mat * vec4(v, w)).xyz;
 }
 
-const int testVolumeWidth = 100;
+const int testVolumeWidth = 200;
 bool getIsOccupided_placeHolder(ivec3 pos, uint lod) {
     bool result = false;
 

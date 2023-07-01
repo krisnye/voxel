@@ -1,4 +1,5 @@
-import { Scene, ShaderMaterial, ShaderLanguage } from "@babylonjs/core"
+import { Scene, ShaderMaterial, ShaderLanguage, Texture, TextureSampler, Constants } from "@babylonjs/core"
+import gridUrl from "../assets/grid.png"
 
 type Options = {}
 
@@ -30,6 +31,9 @@ export function checkerMaterial( name: string, options: Options, scene: Scene ) 
             fragmentSource: /*wgsl*/ `
 
             #include<sceneUboDeclaration>
+
+            var gridTex: texture_2d<f32>;
+            var gridTexSampler: sampler;
     
             varying vNormal : vec3f;
             varying vPos: vec3f;
@@ -51,8 +55,7 @@ export function checkerMaterial( name: string, options: Options, scene: Scene ) 
             }
 
             fn smoothSquare(x: f32, softness: f32) -> f32 {
-                let x2 = sawtooth(x - .5);
-                return aasmoothstep(.5, x2, softness);
+                return aasmoothstep(.5, sawtooth(x - .5), softness);
             }
 
             fn smoothSquare3(v: vec3f, radius: f32) -> vec3f {
@@ -72,14 +75,15 @@ export function checkerMaterial( name: string, options: Options, scene: Scene ) 
             @fragment
             fn main(input : FragmentInputs) -> FragmentOutputs {
                 
-                let toFrag = fragmentInputs.vPos.xyz - scene.vEyePosition.xyz;
-                let dist = length(toFrag);
-                let alignment = -dot(toFrag, fragmentInputs.vNormal) / dist;
+                // let toFrag = fragmentInputs.vPos.xyz - scene.vEyePosition.xyz;
+                // let dist = length(toFrag);
+                // let alignment = -dot(toFrag, fragmentInputs.vNormal) / dist;
                 
-                let softness = dist / alignment / 100.0;
-                let checker = checker3(fragmentInputs.vPos * 10.0 + vec3f(.5), softness);
+                // let softness = dist / alignment / 100.0;
+                // let checker = checker3(fragmentInputs.vPos * 10.0 + vec3f(.5), softness);
 
-                fragmentOutputs.color = vec4f(fragmentInputs.vNormal * .5 + vec3f(.5), 0.0) * (checker * .5 + .5);
+                // fragmentOutputs.color = vec4f(fragmentInputs.vNormal * .5 + vec3f(.5), 0.0) * (checker * .5 + .5);
+                fragmentOutputs.color = textureSample(gridTex, gridTexSampler, fragmentInputs.vUV);
             }
         `
         },
@@ -89,6 +93,16 @@ export function checkerMaterial( name: string, options: Options, scene: Scene ) 
             shaderLanguage: ShaderLanguage.WGSL
         }
     )
+
+    // Setup grid texture/sampler //
+    const gridTex = new Texture( gridUrl )
+    material.setTexture( "gridTex", gridTex )
+    //
+    const gridTexSampler = new TextureSampler()
+    gridTexSampler.setParameters()
+    gridTexSampler.samplingMode = Constants.TEXTURE_NEAREST_SAMPLINGMODE
+    material.setTextureSampler( "gridTexSampler", gridTexSampler )
+    ////
 
     return material
 

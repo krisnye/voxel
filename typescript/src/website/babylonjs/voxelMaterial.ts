@@ -8,7 +8,6 @@ const voxelShaderDefinitions = _voxelShaderDefinitions.slice( _voxelShaderDefini
 type VoxelMaterialOptions = {
     getDiffuse?: string,
     getIsOccupied?: string,
-    // Todo: Make resolution a Vector3.
     resolution?: Vector3,
     maxLod?: number,
     /** Given in model space. */

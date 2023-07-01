@@ -7,7 +7,9 @@ import { addDefaultLights, defaultCamera, groupNodes } from "../babylonjs/Babylo
 import voxelMaterial from "../babylonjs/voxelMaterial"
 import voxelChunkNode from "../babylonjs/voxelChunkNode"
 import VoxelOctree from "../babylonjs/VoxelOctree"
+
 import { checkerMaterial } from "../babylonjs/checkerMaterial"
+import voxelMaterialWebGPU from "../babylonjs/voxelMaterialWebGPU"
 
 export default function VoxelTestScene() {
 
@@ -19,7 +21,6 @@ export default function VoxelTestScene() {
 
         // const sceneOctree = createSceneOctree( scene )
         // const voxelOctreeTexture = sceneOctree.buildTexture( scene )
-
         // const voxelMaterialIns = voxelMaterial( scene, {
         //     fragDefinitions: VoxelOctree.glsl_sampleOctree,
         //     getIsOccupied: `
@@ -36,8 +37,17 @@ export default function VoxelTestScene() {
         //     },
         // } )
 
+        // const voxelMaterialIns = voxelMaterial( scene, {
+        //     fragDefinitions: VoxelOctree.glsl_sampleOctree,
+        //     getDiffuse: `
+        //         vec3 normal = traceResult.normal.xyz;
+        //         return (normal + vec3(1.0)) / 2.0;
+        //     `,
+        //     maxLod: 0
+        // } )
+
         // const voxelMaterialIns = new StandardMaterial( "VoxelMaterial", scene )
-        const voxelMaterialIns = checkerMaterial( "VoxelMaterial", {}, scene )
+        const voxelMaterialIns = voxelMaterialWebGPU( "VoxelMaterial", {}, scene )
 
         // camera.speed *= 128 / sceneOctree.width
 

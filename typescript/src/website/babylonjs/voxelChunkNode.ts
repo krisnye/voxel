@@ -41,7 +41,7 @@ export default function voxelChunkNode( name: string, material: Material, camera
         )
 
         const cameraInVoxelMesh = paddedBoundingBox.intersectsPoint( camera.position )
-        if ( cameraInVoxelMesh && false ) {
+        if ( cameraInVoxelMesh ) {
             group.computeWorldMatrix( true ).invertToRef( groupToWorldMat )
             Vector3.TransformCoordinatesToRef( camera.position, groupToWorldMat, invertedVoxelMesh.position )
             invertedVoxelMesh.isVisible = true
