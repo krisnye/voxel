@@ -62,13 +62,13 @@ vec3 sort3(vec3 a) {
 
 TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalWorld ) {
     TraceResult result;
-
     uint uMaxLod = uint(maxLod);
 
     // Convert to texel space.
     vec3 pos = multVec3(worldToTexel, posWorld, 1.0);
     vec3 heading = normalize( multVec3(worldToTexel, headingWorld, 0.0) );
 
+    // Exit early if we start in a voxel.
     if (getIsOccupided(ivec3(pos), 0u)) {
         result.normal.xyz = -headingWorld;
         result.position = vec4(posWorld + headingWorld * .001, 1.0);
@@ -76,7 +76,7 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
         return result;
     }
 
-    // Todo: Step to the edge of the volume before raymarching.
+    // Step to the edge of the bounding box, or exit if we don't hit it.
     vec2 intersectTime = intersectAABB( pos, heading, vec3(0.0), resolution );
     float nearTime = intersectTime.x;
     if (intersectTime.x > intersectTime.y) {
@@ -91,6 +91,7 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
     uint lodLevel = uMaxLod;
     uint consecutiveEmpties = 0u;
 
+    // Make sure we pick a lod level that isn't occupied.
     while (lodLevel > 0u && getIsOccupided(ipos, lodLevel))
         lodLevel--;
 
@@ -101,17 +102,12 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
 
         vec3 cellMin = floor(pos / stepSize) * stepSize;
         vec3 cellMax = cellMin + vec3(stepSize);
-        vec3 dtMin = (cellMin - pos) / displacement;
-        vec3 dtMax = (cellMax - pos) / displacement;
-        vec3 dts = max(dtMin, dtMax);
+        vec3 dts = max((cellMin - pos) / displacement, (cellMax - pos) / displacement);
+        vec3 sortedDts = sort3(dts);
 
         vec3 previousPos = pos;
         pos += displacement;
-
-        ivec3 iposTarget = ivec3(floor(pos));
-        ivec3 iposDelta = iposTarget - ipos;
-        
-        vec3 sortedDts = sort3(dts);
+        ivec3 iposDelta = ivec3(floor(pos)) - ipos;
 
         // Step through each x/y/z face crossed in order of time to impact.
         for (int i = 0; i < 3; i++) {
@@ -134,8 +130,7 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
                 consecutiveEmpties++;
                 if (consecutiveEmpties > 4u && lodLevel + 1u <= uMaxLod) {
                     result.voxelReads++;
-                    bool largerLodOccupied = getIsOccupided(ipos, lodLevel + 1u);
-                    if (!largerLodOccupied)
+                    if (!getIsOccupided(ipos, lodLevel + 1u))
                         lodLevel++;
                     else
                         consecutiveEmpties = 0u;
