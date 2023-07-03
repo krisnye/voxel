@@ -52,6 +52,14 @@ vec2 intersectAABB(vec3 rayOrigin, vec3 rayDir, vec3 boxMin, vec3 boxMax) {
     return vec2(tNear, tFar);
 }
 
+vec3 sort3(vec3 a) {
+    // Manual bubble sort.
+    if (a.y < a.x) a.xy = a.yx;
+    if (a.z < a.y) a.yz = a.zy;
+    if (a.y < a.x) a.xy = a.yx;
+    return a;
+}
+
 TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalWorld ) {
     TraceResult result;
 
@@ -62,13 +70,11 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
     vec3 heading = normalize( multVec3(worldToTexel, headingWorld, 0.0) );
 
     if (getIsOccupided(ivec3(pos), 0u)) {
-        result.normal.xyz = initialNormalWorld;
-        result.position = vec4(posWorld, 1.0);
+        result.normal.xyz = -headingWorld;
+        result.position = vec4(posWorld + headingWorld * .001, 1.0);
         result.hit = true;
         return result;
     }
-
-    vec3 startPos = pos;
 
     // Todo: Step to the edge of the volume before raymarching.
     vec2 intersectTime = intersectAABB( pos, heading, vec3(0.0), resolution );
@@ -80,15 +86,15 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
     if (nearTime > 1.0)
         pos += heading * (nearTime  - .001);
 
+    vec3 startPos = pos;
     ivec3 ipos = ivec3(floor(pos));
     uint lodLevel = uMaxLod;
+    uint consecutiveEmpties = 0u;
 
     while (lodLevel > 0u && getIsOccupided(ipos, lodLevel))
         lodLevel--;
 
-    int stepIter = 0;
-    uint consecutiveEmpties = 0u;
-    while(stepIter++ < int(256)) {
+    for(int stepIter = 0; stepIter < int(256); stepIter++) {
 
         float stepSize = float(1 << lodLevel);
         vec3 displacement = heading * stepSize;
@@ -104,27 +110,15 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
 
         ivec3 iposTarget = ivec3(floor(pos));
         ivec3 iposDelta = iposTarget - ipos;
-        vec3 currentDts = dts;
+        
+        vec3 sortedDts = sort3(dts);
+
         // Step through each x/y/z face crossed in order of time to impact.
         for (int i = 0; i < 3; i++) {
 
-            // Pick the nearest face we haven't stepped through yet.
-            float dt = min(currentDts.x, min(currentDts.y, currentDts.z));
-            if(dt == currentDts.x) {
-                currentDts.x = 1e+15;
-                if (iposDelta.x == 0) continue;
-                ipos.x += iposDelta.x;
-            } else if(dt == currentDts.y) {
-                currentDts.y = 1e+15;
-                if (iposDelta.y == 0) continue;
-                ipos.y += iposDelta.y;
-            } else if(dt == currentDts.z) {
-                currentDts.z = 1e+15;
-                if (iposDelta.z == 0) continue;
-                ipos.z += iposDelta.z;
-            } else {
-                break;
-            }
+            float dt = sortedDts[i];
+            bvec3 mask = equal(vec3(dt), dts);
+            ipos += iposDelta * ivec3(mask);
 
             bool isOutOfBounds = 
                 ipos.x < 0 || ipos.x >= int(resolution.x) ||
@@ -150,15 +144,15 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
             }
             consecutiveEmpties = 0u;
 
-            // Todo: Calculate texture-lookup-lod from distance instead.
+            // Todo: Compute distance-based-lod in a way that different fragments would agree.
             vec3 octreeCellCenter = floor(vec3(ipos) / stepSize) * stepSize + vec3(stepSize * .5);
             float dist = dot(octreeCellCenter - startPos, heading);
              // Todo: Pull this out into a uniform.
-            float lodFactor = .0025;
+            float lodFactor = .00125;
             if (stepSize > dist * lodFactor && lodLevel > 0u) {
                 lodLevel--;
                 // Even if we're crossing a whole octree-cell, going 75% of the way should
-                // put us in the middle of the child cell adjacent to the obstacle.
+                // `put us in the middle of the child cell adjacent to the obstacle.
                 pos = previousPos + displacement * dt * .75;
                 ipos = ivec3(floor(pos));
                 break;
@@ -166,19 +160,10 @@ TraceResult raytraceVoxels(vec3 posWorld, vec3 headingWorld, vec3 initialNormalW
             
             result.hit = true;
             result.cell = ipos;
-
             vec3 hitPos = previousPos + displacement * dt;
             result.position = texelToWorld * vec4(hitPos, 1.0);
-
-            if(dt == dts.x)
-                result.normal.x = -sign(heading.x);
-            else if(dt == dts.y)
-                result.normal.y = -sign(heading.y);
-            else //if(dt == dts.z)
-                result.normal.z = -sign(heading.z);
-            //
+            result.normal.xyz = -sign(heading) * vec3(mask);
             result.normal = normalize(texelToWorld * result.normal);
-            
             return result;
 
         }
