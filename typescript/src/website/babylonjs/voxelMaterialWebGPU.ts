@@ -58,8 +58,14 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
         `,
             fragmentSource: /*wgsl*/ `
 
-            uniform maxLod: f32;
-            uniform resolution: f32;
+            // uniform resolution: vec3f;
+            // uniform PAD_1: f32;
+            // uniform maxLod: f32;
+            struct Volume {
+                resolution: vec3f,
+                maxLod: f32
+            }
+            var<uniform> volume: Volume;
             struct TexelTransforms {
                 texelToWorld: mat4x4f,
                 worldToTexel: mat4x4f
@@ -86,63 +92,79 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                 voxelReads: u32,
             }
 
-            // Return the vector with the minimum x value.
-            fn min2(a: vec2f, b: vec2f) -> vec2f {
-                return select(a, b, a.x > b.x);
-            }
-
-            const testVolumeWidth = 200;
-            fn getIsOccupied_placeholder(pos: vec3i, level: i32) -> bool {
-                var result = false;
-                var posf = vec3f(pos);
-                var radius = f32(uniforms.resolution) / 2.0;
-                var l = length(posf - vec3f(radius - .5));
-                if (l < radius) { result = true; }
-                return true;
-            }
+            // const testVolumeWidth = 200;
+            // fn getIsOccupied_placeholder(pos: vec3i, level: i32) -> bool {
+            //     var result = false;
+            //     var posf = vec3f(pos);
+            //     // let res = max(uniforms.resolution.x, max(uniforms.resolution.y, uniforms.resolution.z));
+            //     // var radius = f32(res) / 2.0;
+            //     var radius = uniforms.resolution / 2.0;
+            //     var l = length(posf - vec3f(radius - .5));
+            //     if (l < radius) { result = true; }
+            //     return true;
+            // }
 
             fn getIsOccupied(pos: vec3i, level: i32) -> bool {
                 ${ isOpaque }
             }
 
+            fn sort3(a: vec3f) -> vec3f {
+                var b = a;
+                // Manual bubble sort.
+                if (b.y < b.x) { b = b.yxz; }
+                if (b.z < b.y) { b = b.xzy; }
+                if (b.y < b.x) { b = b.yxz; }
+                return b;
+            }
+
             fn raytraceVoxels(posWorld: vec3f, headingWorld: vec3f) {
                 var traceResult: TraceResult;
+                // let iresolution = vec3i(uniforms.resolution);
 
                 var pos = (texelTransforms.worldToTexel * vec4f(posWorld, 1.0)).xyz;
                 let heading = normalize((texelTransforms.worldToTexel * vec4f(headingWorld, 0.0)).xyz);
 
-
                 var ipos = vec3i(floor(pos));
-                var lodLevel = uniforms.maxLod;
+                var lodLevel = u32(volume.maxLod);
 
                 for (var stepIter = 0u; stepIter < 256; stepIter++) {
                     let stepSize = 1.0;
-                    let displacement = heading * stepSize;
+                    let step = heading * stepSize;
 
                     let cellMin = floor(pos / stepSize) * stepSize;
                     let cellMax = cellMin + vec3f(stepSize);
-                    let dts = max(
-                        (cellMin - pos) / displacement, 
-                        (cellMax - pos) / displacement
-                    );
-                    let minDt = min(dts.x, min(dts.y, dts.z));
-
+                    let dts = max((cellMin - pos) / step, (cellMax - pos) / step);
+                    let sortedDts = sort3(dts);
 
                     let previousPos = pos;
-                    pos += displacement;
+                    pos += step;
+                    let idelta = vec3i(floor(pos)) - ipos;
+
+                    // Step through each x/y/z face crossed in order of time to impact.
+                    for (var i: i32 = 0; i < 3; i++) {
+                        let dt = sortedDts[i];
+                        let mask = vec3i(i32(dts.x == dt), i32(dts.y == dt), i32(dts.z == dt));
+                        ipos += idelta * vec3i(mask);
+
+                        // let outOfBounds =
+                        //     ipos.x < 0 || ipos.x >= iresolution.x ||
+                        //     ipos.y < 0 || ipos.y >= iresolution.y ||
+                        //     ipos.z < 0 || ipos.z >= iresolution.z;
+                    }
 
                 }
             }
 
             @fragment
             fn main(input : FragmentInputs) -> FragmentOutputs {
-                fragmentOutputs.color = textureSample(gridTex, gridTexSampler, fragmentInputs.vUV) * uniforms.maxLod;
+                // fragmentOutputs.color = textureSample(gridTex, gridTexSampler, fragmentInputs.vUV) * uniforms.maxLod;
+                fragmentOutputs.color = textureSample(gridTex, gridTexSampler, fragmentInputs.vUV) * volume.maxLod;
             }
         `
         },
         {
             attributes: [ "position", "normal", "uv" ],
-            uniformBuffers: [ "Scene", "Mesh", "texelTransforms" ],
+            uniformBuffers: [ "Scene", "Mesh" ],
             shaderLanguage: ShaderLanguage.WGSL
         }
     )
@@ -153,16 +175,23 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
     const modelToTexel = Matrix.Translation( texelOrigin.x, texelOrigin.y, texelOrigin.z )
         .multiply( Matrix.Scaling( resolutionMax, resolutionMax, resolutionMax ) )
 
-    const texelTransforms = new UniformBuffer( scene.getEngine() )
-    scene.onDisposeObservable.add( () => texelTransforms.dispose() )
-
-    texelTransforms.addMatrix( "worldToTexel", worldToTexel )
-    texelTransforms.addMatrix( "texelToWorld", texelToWorld )
-    texelTransforms.update()
-
-    material.setUniformBuffer( "texelTransforms", texelTransforms )
-    material.setVector3( "resolution", resolution )
-    material.setFloat( "maxLod", maxLod )
+    const volumeUBO = new UniformBuffer( scene.getEngine() )
+    const texelTransformsUBO = new UniformBuffer( scene.getEngine() )
+    scene.onDisposeObservable.add( () => {
+        texelTransformsUBO.dispose()
+        volumeUBO.dispose()
+    } )
+    //
+    volumeUBO.addVector3( "resolution", resolution )
+    volumeUBO.addUniform( "maxLod", 1 )
+    volumeUBO.updateFloat( "maxLod", maxLod )
+    volumeUBO.update()
+    material.setUniformBuffer( "volume", volumeUBO )
+    //
+    texelTransformsUBO.addMatrix( "worldToTexel", worldToTexel )
+    texelTransformsUBO.addMatrix( "texelToWorld", texelToWorld )
+    texelTransformsUBO.update()
+    material.setUniformBuffer( "texelTransforms", texelTransformsUBO )
 
     material.onBindObservable.add( ( mesh ) => {
         const node = mesh.parent ?? mesh
@@ -170,10 +199,12 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
         node.getWorldMatrix().invertToRef( worldToTexel ).multiplyToRef( modelToTexel, worldToTexel )
         worldToTexel.invertToRef( texelToWorld )
 
-        texelTransforms.updateMatrix( "worldToTexel", worldToTexel )
-        texelTransforms.updateMatrix( "texelToWorld", texelToWorld )
-    } )
+        texelTransformsUBO.updateMatrix( "worldToTexel", worldToTexel )
+        texelTransformsUBO.updateMatrix( "texelToWorld", texelToWorld )
 
+        volumeUBO.updateFloat( "maxLod", Math.sin( performance.now() / 500 ) * .25 + .75 )
+        volumeUBO.update()
+    } )
 
     // Setup grid texture/sampler //
     const gridTex = new Texture( gridUrl )
@@ -184,6 +215,10 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
     gridTexSampler.samplingMode = Constants.TEXTURE_LINEAR_LINEAR_MIPLINEAR
     material.setTextureSampler( "gridTexSampler", gridTexSampler )
     ///////////////////////////////
+
+    material.onEffectCreatedObservable.add( e => {
+        console.log( e.effect.fragmentSourceCode )
+    } )
 
     return material
 
