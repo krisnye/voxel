@@ -25,7 +25,7 @@ function getTextureDeclarations( defs: TextureDefs ) {
 export default function voxelMaterialWebGPU( name: string, options: Options, scene: Scene ) {
     const {
         textures,
-        isOpaque = `return true;`,
+        isOpaque = `return isOpaque_placeholder(pos, level);`,
         fragDefinitions = ``,
         resolution = new Vector3( 200, 200, 200 ),
         texelOrigin = new Vector3( .5, .5, .5 ),
@@ -58,9 +58,6 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
         `,
             fragmentSource: /*wgsl*/ `
 
-            // uniform resolution: vec3f;
-            // uniform PAD_1: f32;
-            // uniform maxLod: f32;
             struct Volume {
                 resolution: vec3f,
                 maxLod: f32
@@ -90,21 +87,22 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                 normal: vec4f,
                 hit: bool,
                 voxelReads: u32,
+                debugColor: vec4f,
             }
 
             // const testVolumeWidth = 200;
-            // fn getIsOccupied_placeholder(pos: vec3i, level: i32) -> bool {
-            //     var result = false;
-            //     var posf = vec3f(pos);
-            //     // let res = max(uniforms.resolution.x, max(uniforms.resolution.y, uniforms.resolution.z));
-            //     // var radius = f32(res) / 2.0;
-            //     var radius = uniforms.resolution / 2.0;
-            //     var l = length(posf - vec3f(radius - .5));
-            //     if (l < radius) { result = true; }
-            //     return true;
-            // }
+            fn isOpaque_placeholder(pos: vec3i, level: u32) -> bool {
+                var result = false;
+                var posf = vec3f(pos);
+                let res = volume.resolution;
+                let maxRes = max(res.x, max(res.y, res.z));
+                var radius = f32(maxRes) / 3.0;
+                var l = length(posf - vec3f(radius - .5));
+                if (l < radius) { result = true; }
+                return result;
+            }
 
-            fn getIsOccupied(pos: vec3i, level: i32) -> bool {
+            fn getIsOccupied(pos: vec3i, level: u32) -> bool {
                 ${ isOpaque }
             }
 
@@ -117,19 +115,41 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                 return b;
             }
 
-            fn raytraceVoxels(posWorld: vec3f, headingWorld: vec3f) {
+            // Source https://gist.github.com/DomNomNom/46bb1ce47f68d255fd5d
+            fn intersectAABB(rayOrigin: vec3f, rayDir: vec3f, boxMin: vec3f, boxMax: vec3f) -> vec2f {
+                let tMin = (boxMin - rayOrigin) / rayDir;
+                let tMax = (boxMax - rayOrigin) / rayDir;
+                let t1 = min(tMin, tMax);
+                let t2 = max(tMin, tMax);
+                let tNear = max(max(t1.x, t1.y), t1.z);
+                let tFar = min(min(t2.x, t2.y), t2.z);
+                return vec2f(tNear, tFar);
+            }
+
+            fn raytraceVoxels(posWorld: vec3f, directionWorld: vec3f) -> TraceResult {
                 var traceResult: TraceResult;
-                // let iresolution = vec3i(uniforms.resolution);
+                let iresolution = vec3i(volume.resolution);
 
                 var pos = (texelTransforms.worldToTexel * vec4f(posWorld, 1.0)).xyz;
-                let heading = normalize((texelTransforms.worldToTexel * vec4f(headingWorld, 0.0)).xyz);
+                let direction = normalize((texelTransforms.worldToTexel * vec4f(directionWorld, 0.0)).xyz);
 
                 var ipos = vec3i(floor(pos));
                 var lodLevel = u32(volume.maxLod);
 
+                // Step to the edge of the bounding box, or exit if we don't hit it.
+                let intersectTime = intersectAABB( pos, direction, vec3(0.0), volume.resolution );
+                let nearTime = intersectTime.x;
+                if (intersectTime.x > intersectTime.y) {
+                    return traceResult;
+                }
+                if (nearTime > 1.0) {
+                    pos += direction * (nearTime  - .001);
+                }
+
                 for (var stepIter = 0u; stepIter < 256; stepIter++) {
+                    
                     let stepSize = 1.0;
-                    let step = heading * stepSize;
+                    let step = direction * stepSize;
 
                     let cellMin = floor(pos / stepSize) * stepSize;
                     let cellMax = cellMin + vec3f(stepSize);
@@ -146,19 +166,52 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                         let mask = vec3i(i32(dts.x == dt), i32(dts.y == dt), i32(dts.z == dt));
                         ipos += idelta * vec3i(mask);
 
-                        // let outOfBounds =
-                        //     ipos.x < 0 || ipos.x >= iresolution.x ||
-                        //     ipos.y < 0 || ipos.y >= iresolution.y ||
-                        //     ipos.z < 0 || ipos.z >= iresolution.z;
+                        let outOfBounds =
+                            ipos.x < 0 || ipos.x >= iresolution.x ||
+                            ipos.y < 0 || ipos.y >= iresolution.y ||
+                            ipos.z < 0 || ipos.z >= iresolution.z;
+
+                        
+                        if (outOfBounds) {
+                            return traceResult;
+                        }
+
+                        traceResult.voxelReads++;
+                        let occupied = getIsOccupied(ipos, lodLevel);
+                        if (!occupied) {
+                            continue;
+                        }
+
+                        traceResult.hit = true;
+                        traceResult.cell = ipos;
+                        let hitPos = previousPos + step * dt;
+                        traceResult.position = texelTransforms.texelToWorld * vec4f(hitPos, 1.0);
+                        traceResult.normal = normalize(vec4f(-sign(direction) * vec3f(mask), 0.0));
+                        return traceResult;
                     }
 
                 }
+
+                return traceResult;
             }
 
             @fragment
             fn main(input : FragmentInputs) -> FragmentOutputs {
-                // fragmentOutputs.color = textureSample(gridTex, gridTexSampler, fragmentInputs.vUV) * uniforms.maxLod;
-                fragmentOutputs.color = textureSample(gridTex, gridTexSampler, fragmentInputs.vUV) * volume.maxLod;
+                let position = scene.vEyePosition.xyz;
+                let direction = normalize(fragmentInputs.vPos - position);
+                let traceResult = raytraceVoxels(fragmentInputs.vPos, direction);
+
+                // fragmentOutputs.color = traceResult.debugColor;
+
+                if (!traceResult.hit) {
+                    discard;
+                }
+
+                fragmentOutputs.color = vec4f( traceResult.normal.xyz * 0.5 + vec3f(0.5), 1.0);
+                // fragmentOutputs.color = vec4f( vec3f(f32(traceResult.voxelReads)), 1.0);
+
+                // fragmentOutputs.color = textureSample(gridTex, gridTexSampler, fragmentInputs.vUV) * volume.maxLod;
+                
             }
         `
         },
@@ -178,8 +231,8 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
     const volumeUBO = new UniformBuffer( scene.getEngine() )
     const texelTransformsUBO = new UniformBuffer( scene.getEngine() )
     scene.onDisposeObservable.add( () => {
-        texelTransformsUBO.dispose()
         volumeUBO.dispose()
+        texelTransformsUBO.dispose()
     } )
     //
     volumeUBO.addVector3( "resolution", resolution )
@@ -188,8 +241,8 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
     volumeUBO.update()
     material.setUniformBuffer( "volume", volumeUBO )
     //
-    texelTransformsUBO.addMatrix( "worldToTexel", worldToTexel )
     texelTransformsUBO.addMatrix( "texelToWorld", texelToWorld )
+    texelTransformsUBO.addMatrix( "worldToTexel", worldToTexel )
     texelTransformsUBO.update()
     material.setUniformBuffer( "texelTransforms", texelTransformsUBO )
 
@@ -199,11 +252,12 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
         node.getWorldMatrix().invertToRef( worldToTexel ).multiplyToRef( modelToTexel, worldToTexel )
         worldToTexel.invertToRef( texelToWorld )
 
-        texelTransformsUBO.updateMatrix( "worldToTexel", worldToTexel )
         texelTransformsUBO.updateMatrix( "texelToWorld", texelToWorld )
+        texelTransformsUBO.updateMatrix( "worldToTexel", worldToTexel )
+        texelTransformsUBO.update()
 
-        volumeUBO.updateFloat( "maxLod", Math.sin( performance.now() / 500 ) * .25 + .75 )
-        volumeUBO.update()
+        // volumeUBO.updateFloat( "maxLod", Math.sin( performance.now() / 500 ) * .25 + .75 )
+        // volumeUBO.update()
     } )
 
     // Setup grid texture/sampler //

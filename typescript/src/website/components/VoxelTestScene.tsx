@@ -1,7 +1,7 @@
 import React from "preact"
 import SceneComponent from "./SceneComponent"
 import {
-    Engine, Scene, FxaaPostProcess, Color4, TransformNode, Vector3, Texture, StandardMaterial
+    Engine, Scene, FxaaPostProcess, Color4, TransformNode, Vector3, Texture, StandardMaterial, AxesViewer
 } from "@babylonjs/core"
 import { addDefaultLights, defaultCamera, groupNodes } from "../babylonjs/BabylonUtils"
 import voxelMaterial from "../babylonjs/voxelMaterial"
@@ -58,10 +58,12 @@ export default function VoxelTestScene() {
             for ( let j = 0; j < widthInChunks; j++ ) {
                 let node = voxelChunkNode( `ChunkNode${ i }`, voxelMaterialIns, camera, scene )
                 chunkNodes.push( node )
-                node.position.addInPlaceFromFloats( j - radiusInChunks, .5, i - radiusInChunks )
+                node.position.addInPlaceFromFloats( j - radiusInChunks + .5, .5, i - radiusInChunks + .5 )
                 node.metadata = { i, j }
             }
         }
+
+        // new AxesViewer( scene )
 
         scene.onBeforeRenderObservable.add( () => {
             const fpsCounter = document.getElementById( "fpsCounter" )
