@@ -19,8 +19,8 @@ export default function VoxelTestScene() {
         const camera = defaultCamera( scene )
         const fxaa = new FxaaPostProcess( "fxaa", 1.0, camera )
 
-        // const sceneOctree = createSceneOctree( scene )
-        // const voxelOctreeTexture = sceneOctree.buildTexture( scene )
+        const sceneOctree = createSceneOctree( scene )
+        const voxelOctreeTexture = sceneOctree.buildTexture( scene )
         // const voxelMaterialIns = voxelMaterial( scene, {
         //     fragDefinitions: VoxelOctree.glsl_sampleOctree,
         //     getIsOccupied: `
@@ -37,17 +37,11 @@ export default function VoxelTestScene() {
         //     },
         // } )
 
-        // const voxelMaterialIns = voxelMaterial( scene, {
-        //     fragDefinitions: VoxelOctree.glsl_sampleOctree,
-        //     getDiffuse: `
-        //         vec3 normal = traceResult.normal.xyz;
-        //         return (normal + vec3(1.0)) / 2.0;
-        //     `,
-        //     maxLod: 0
-        // } )
-
-        // const voxelMaterialIns = new StandardMaterial( "VoxelMaterial", scene )
-        const voxelMaterialIns = voxelMaterialWebGPU( "VoxelMaterial", {}, scene )
+        const voxelMaterialIns = voxelMaterialWebGPU( "VoxelMaterial", {
+            textures: {
+                voxelOctreeTexture: { type: "u32", dimension: "3d", sampler: false, value: voxelOctreeTexture }
+            }
+        }, scene )
 
         // camera.speed *= 128 / sceneOctree.width
 
@@ -86,9 +80,9 @@ export default function VoxelTestScene() {
 }
 
 function createSceneOctree( scene: Scene ) {
-    const width = 1024
-    const height = 256
-    const depth = 1024
+    const width = 256
+    const height = 128
+    const depth = 256
 
     const data = new Uint8ClampedArray( width * height * depth )
 

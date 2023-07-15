@@ -1,7 +1,14 @@
 import { Scene, ShaderMaterial, ShaderLanguage, Texture, TextureSampler, Constants, UniformBuffer, Vector3, Matrix } from "@babylonjs/core"
 import gridUrl from "../assets/grid.png"
 
-type TextureDefs = { [ key: string ]: { type: string, value: Texture } }
+type TextureDefs = {
+    [ key: string ]: {
+        type: string,
+        dimension?: "2d" | "3d",
+        sampler?: boolean,
+        value: Texture,
+    }
+}
 
 type Options = {
     textures?: TextureDefs,
@@ -16,8 +23,11 @@ type Options = {
 function getTextureDeclarations( defs: TextureDefs ) {
     let result: string[] = []
     for ( let name in defs ) {
-        let type = defs[ name ].type
-        result.push( `var ${ name }: texture_2d<${ type }>;\nvar ${ name }Sampler: sampler;` )
+        let texture = defs[ name ]
+        let { type, sampler = true, dimension = "2d" } = texture
+        result.push( `var ${ name }: texture_${ dimension }<${ type }>;` )
+        if ( sampler )
+            result.push( `var ${ name }Sampler: sampler;` )
     }
     return result.join( "\n" )
 }
@@ -96,7 +106,7 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                 var posf = vec3f(pos);
                 let res = volume.resolution;
                 let maxRes = max(res.x, max(res.y, res.z));
-                var radius = f32(maxRes) / 3.0;
+                var radius = f32(maxRes) / 2.0;
                 var l = length(posf - vec3f(radius - .5));
                 if (l < radius) { result = true; }
                 return result;
@@ -235,6 +245,7 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
         texelTransformsUBO.dispose()
     } )
     //
+    // We may want to generate these UBO descriptions and WGSL structs from a single description.
     volumeUBO.addVector3( "resolution", resolution )
     volumeUBO.addUniform( "maxLod", 1 )
     volumeUBO.updateFloat( "maxLod", maxLod )
@@ -255,20 +266,29 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
         texelTransformsUBO.updateMatrix( "texelToWorld", texelToWorld )
         texelTransformsUBO.updateMatrix( "worldToTexel", worldToTexel )
         texelTransformsUBO.update()
-
-        // volumeUBO.updateFloat( "maxLod", Math.sin( performance.now() / 500 ) * .25 + .75 )
-        // volumeUBO.update()
     } )
 
-    // Setup grid texture/sampler //
-    const gridTex = new Texture( gridUrl )
-    material.setTexture( "gridTex", gridTex )
-    //
-    const gridTexSampler = new TextureSampler()
-    gridTexSampler.setParameters()
-    gridTexSampler.samplingMode = Constants.TEXTURE_LINEAR_LINEAR_MIPLINEAR
-    material.setTextureSampler( "gridTexSampler", gridTexSampler )
-    ///////////////////////////////
+    for ( let name in textures ) {
+        const texture = textures[ name ]
+        let { sampler = true } = texture
+        material.setTexture( name, texture.value )
+        if ( sampler ) {
+            const texSampler = new TextureSampler()
+            texSampler.setParameters()
+            texSampler.samplingMode = Constants.TEXTURE_NEAREST_NEAREST
+            material.setTextureSampler( `${ name }Sampler`, texSampler )
+        }
+    }
+
+    { // Temporary, delete later.
+        const gridTex = new Texture( gridUrl )
+        material.setTexture( "gridTex", gridTex )
+
+        const gridTexSampler = new TextureSampler()
+        gridTexSampler.setParameters()
+        gridTexSampler.samplingMode = Constants.TEXTURE_LINEAR_LINEAR_MIPLINEAR
+        material.setTextureSampler( "gridTexSampler", gridTexSampler )
+    }
 
     material.onEffectCreatedObservable.add( e => {
         console.log( e.effect.fragmentSourceCode )

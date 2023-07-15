@@ -1,5 +1,6 @@
-import Babylon, { Scene, Vector3, DirectionalLight, Color3, FreeCamera, HemisphericLight, TransformNode, Node } from "@babylonjs/core"
+import Babylon, { Scene, Vector3, DirectionalLight, Color3, FreeCamera, HemisphericLight, TransformNode, Node, InternalTexture, Texture, Constants, WebGPUEngine } from "@babylonjs/core"
 import { MouseButtons } from "../utils/MouseButtons"
+import { WebGPUHardwareTexture } from "@babylonjs/core/Engines/WebGPU/webgpuHardwareTexture"
 
 export function addDefaultLights( scene: Scene ) {
     // scene.createDefaultLight()
@@ -65,4 +66,11 @@ export function addWASDControls( cam: FreeCamera ) {
     cam.keysRight.push( "D".charCodeAt( 0 ) )
     cam.keysUpward.push( " ".charCodeAt( 0 ) )
     cam.keysDownward.push( 16 /*Left Shift*/ )
+}
+
+export function wrapWebGPUTexture( engine: WebGPUEngine, scene: Scene, gpuTexture: GPUTexture ) {
+    const internalTexture = engine.wrapWebGPUTexture( gpuTexture )
+    const hwTexture = internalTexture._hardwareTexture as WebGPUHardwareTexture
+    hwTexture.createView()
+    return new Texture( null, scene, { internalTexture } )
 }

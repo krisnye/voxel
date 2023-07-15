@@ -1,4 +1,7 @@
-import { Engine, RawTexture3D, Scene, Texture } from "@babylonjs/core"
+import { Engine, InternalTexture, InternalTextureSource, RawTexture3D, Scene, Texture, TextureUsage, WebGPUEngine } from "@babylonjs/core"
+import { WebGPUHardwareTexture } from "@babylonjs/core/Engines/WebGPU/webgpuHardwareTexture"
+import { emit } from "process"
+import { wrapWebGPUTexture } from "./BabylonUtils"
 
 /**
  * Represents a level of an octree with each 2x2x2 cell packed into single bytes.
@@ -113,6 +116,52 @@ export default class VoxelOctree {
         }`
 
     buildTexture( scene: Scene ) {
+        const engine = scene.getEngine()
+        let texture: Texture
+        if ( engine instanceof WebGPUEngine )
+            texture = this.buildTexture_WebGPU( engine, scene )
+        else
+            texture = this.buildTexture_WebGL( engine, scene )
+        texture.metadata = { lodLevels: this.levels.length }
+        return texture as RawTexture3D & { metadata: { lodLevels: number } }
+    }
+
+    buildTexture_WebGPU( engine: WebGPUEngine, scene: Scene ) {
+        const levels = this.levels
+        const level0 = levels[ 0 ]
+
+        const device = engine._device
+        const queue = device.queue
+
+        const gpuTexture = device.createTexture( {
+            dimension: "3d",
+            format: "r8uint",
+            size: [ level0.widthInBytes, level0.heightInBytes, level0.depthInBytes ],
+            usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+            mipLevelCount: levels.length
+        } )
+
+        for ( let i = 0; i < levels.length; i++ ) {
+            const level = levels[ i ]
+            queue.writeTexture(
+                { texture: gpuTexture, mipLevel: i },
+                level.data,
+                {
+                    bytesPerRow: level.widthInBytes,
+                    rowsPerImage: level.heightInBytes
+                },
+                {
+                    width: level.widthInBytes,
+                    height: level.heightInBytes,
+                    depthOrArrayLayers: level.depthInBytes
+                }
+            )
+        }
+
+        return wrapWebGPUTexture( engine, scene, gpuTexture )
+    }
+
+    buildTexture_WebGL( engine: Engine, scene: Scene ) {
         let levels = this.levels
         let level0 = levels[ 0 ]
 
@@ -129,7 +178,6 @@ export default class VoxelOctree {
         if ( !internalTexture )
             throw new Error( "Could not access internal texture to set mipmaps." )
 
-        const engine = scene.getEngine()
         const gl = engine._gl
         const target = gl.TEXTURE_3D
 
@@ -159,9 +207,7 @@ export default class VoxelOctree {
         engine._bindTextureDirectly( target, null )
         internalTexture.isReady = true
 
-        texture.metadata = { lodLevels: levels.length }
-        return texture as RawTexture3D & { metadata: { lodLevels: number } }
-
+        return texture
     }
 
 }
