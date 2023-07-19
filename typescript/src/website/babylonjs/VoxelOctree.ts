@@ -115,6 +115,21 @@ export default class VoxelOctree {
             return value > 0u;
         }`
 
+    static wgsl_sampleOctree( textureName: string ) {
+        let name = textureName
+        return /*wgsl*/ `fn sampleOctree_${ name }(pos: vec3i, lod: u32) -> bool {
+            if (pos.x < 0 || pos.y < 0 || pos.z < 0) { return false; }
+            let dims = vec3i(textureDimensions(${ name }, 0u)) * 2;
+            if (pos.x >= dims.x || pos.y >= dims.y || pos.z >= dims.z) { return false; }
+
+            let lodPos = pos / (1 << lod);
+            let byte = textureLoad( ${ textureName }, lodPos / 2, u32(lod) ).r;
+            let bitIndex = u32(lodPos.x & 1) + 2u * u32(lodPos.y & 1) + 4u * u32(lodPos.z & 1);
+            let value = (byte >> bitIndex) & 1u;
+            return value > 0u;
+        }`
+    }
+
     buildTexture( scene: Scene ) {
         const engine = scene.getEngine()
         let texture: Texture

@@ -38,8 +38,12 @@ export default function VoxelTestScene() {
         // } )
 
         const voxelMaterialIns = voxelMaterialWebGPU( "VoxelMaterial", {
+            fragDefinitions: VoxelOctree.wgsl_sampleOctree( "octreeTex" ),
+            isOpaque: "return sampleOctree_octreeTex(pos, level);",
+            resolution: new Vector3( sceneOctree.width, sceneOctree.height, sceneOctree.depth ),
+            // isOpaque: "return textureLoad(voxelOctreeTexture, pos, level).x != 0u;",
             textures: {
-                voxelOctreeTexture: { type: "u32", dimension: "3d", sampler: false, value: voxelOctreeTexture }
+                octreeTex: { type: "u32", dimension: "3d", sampler: false, value: voxelOctreeTexture }
             }
         }, scene )
 
@@ -80,9 +84,9 @@ export default function VoxelTestScene() {
 }
 
 function createSceneOctree( scene: Scene ) {
-    const width = 256
-    const height = 128
-    const depth = 256
+    const width = 32
+    const height = 32
+    const depth = 32
 
     const data = new Uint8ClampedArray( width * height * depth )
 
@@ -92,7 +96,7 @@ function createSceneOctree( scene: Scene ) {
         if ( heightMap[ i ] == 0 ) {
             let xn = x / width
             let zn = z / depth
-            let freq = Math.PI * 2 * 5
+            let freq = Math.PI * 2
             let h = Math.sin( xn * freq ) * Math.sin( zn * freq )
             heightMap[ i ] = .25 + .75 * h
         }

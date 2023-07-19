@@ -136,7 +136,7 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                 return vec2f(tNear, tFar);
             }
 
-            fn raytraceVoxels(posWorld: vec3f, directionWorld: vec3f) -> TraceResult {
+            fn raytraceVoxels(posWorld: vec3f, directionWorld: vec3f, initialNormalWorld: vec3f) -> TraceResult {
                 var traceResult: TraceResult;
                 let iresolution = vec3i(volume.resolution);
 
@@ -154,6 +154,13 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                 }
                 if (nearTime > 1.0) {
                     pos += direction * (nearTime  - .001);
+                }
+                
+                if (getIsOccupied(ipos, 0u)) {
+                    traceResult.normal = vec4f(initialNormalWorld, 0.0);
+                    traceResult.position = vec4f(posWorld, 1.0);
+                    traceResult.hit = true;
+                    return traceResult;
                 }
 
                 for (var stepIter = 0u; stepIter < 256; stepIter++) {
@@ -176,15 +183,15 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                         let mask = vec3i(i32(dts.x == dt), i32(dts.y == dt), i32(dts.z == dt));
                         ipos += idelta * vec3i(mask);
 
-                        let outOfBounds =
-                            ipos.x < 0 || ipos.x >= iresolution.x ||
-                            ipos.y < 0 || ipos.y >= iresolution.y ||
-                            ipos.z < 0 || ipos.z >= iresolution.z;
+                        // let outOfBounds =
+                        //     ipos.x < 0 || ipos.x >= iresolution.x ||
+                        //     ipos.y < 0 || ipos.y >= iresolution.y ||
+                        //     ipos.z < 0 || ipos.z >= iresolution.z;
 
                         
-                        if (outOfBounds) {
-                            return traceResult;
-                        }
+                        // if (outOfBounds) {
+                        //     return traceResult;
+                        // }
 
                         traceResult.voxelReads++;
                         let occupied = getIsOccupied(ipos, lodLevel);
@@ -209,7 +216,8 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
             fn main(input : FragmentInputs) -> FragmentOutputs {
                 let position = scene.vEyePosition.xyz;
                 let direction = normalize(fragmentInputs.vPos - position);
-                let traceResult = raytraceVoxels(fragmentInputs.vPos, direction);
+                let normal = fragmentInputs.vNormal;
+                let traceResult = raytraceVoxels(fragmentInputs.vPos, direction, normal);
 
                 // fragmentOutputs.color = traceResult.debugColor;
 
