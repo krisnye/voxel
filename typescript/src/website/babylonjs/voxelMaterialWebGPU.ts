@@ -98,6 +98,7 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                 hit: bool,
                 voxelReads: u32,
                 debugColor: vec4f,
+                showDebug: bool,
             }
 
             // const testVolumeWidth = 200;
@@ -139,23 +140,26 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
             fn raytraceVoxels(posWorld: vec3f, directionWorld: vec3f, initialNormalWorld: vec3f) -> TraceResult {
                 var traceResult: TraceResult;
                 let iresolution = vec3i(volume.resolution);
-
+                
                 var pos = (texelTransforms.worldToTexel * vec4f(posWorld, 1.0)).xyz;
                 let direction = normalize((texelTransforms.worldToTexel * vec4f(directionWorld, 0.0)).xyz);
-
-                var ipos = vec3i(floor(pos));
-                var lodLevel = u32(volume.maxLod);
-
+                
+                let startPos = pos;
+                let resMax = f32(max( iresolution.x, max(iresolution.y, iresolution.z) ));
+                
                 // Step to the edge of the bounding box, or exit if we don't hit it.
                 let intersectTime = intersectAABB( pos, direction, vec3(0.0), volume.resolution );
                 let nearTime = intersectTime.x;
-                if (intersectTime.x > intersectTime.y) {
-                    return traceResult;
-                }
+                if (intersectTime.x > intersectTime.y) { return traceResult; }
                 if (nearTime > 1.0) {
-                    pos += direction * (nearTime  - .001);
+                    // pos += direction * (nearTime - .0001);
+                    pos += direction * (nearTime - 0.25);
                 }
+
+                var ipos = vec3i(floor(pos));
+                var lodLevel = u32(volume.maxLod);
                 
+                // Exit early if we start in a voxel.
                 if (getIsOccupied(ipos, 0u)) {
                     traceResult.normal = vec4f(initialNormalWorld, 0.0);
                     traceResult.position = vec4f(posWorld, 1.0);
@@ -183,15 +187,18 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                         let mask = vec3i(i32(dts.x == dt), i32(dts.y == dt), i32(dts.z == dt));
                         ipos += idelta * vec3i(mask);
 
-                        // let outOfBounds =
-                        //     ipos.x < 0 || ipos.x >= iresolution.x ||
-                        //     ipos.y < 0 || ipos.y >= iresolution.y ||
-                        //     ipos.z < 0 || ipos.z >= iresolution.z;
+                        let outOfBounds = // Bounds padded by 1 voxel for numerical precision reasons.
+                            ipos.x < -1 || ipos.x > iresolution.x ||
+                            ipos.y < -1 || ipos.y > iresolution.y ||
+                            ipos.z < -1 || ipos.z > iresolution.z;
 
                         
-                        // if (outOfBounds) {
-                        //     return traceResult;
-                        // }
+                        if (outOfBounds) {
+                            // let normalizedDistance = length(pos - startPos) / resMax;
+                            // traceResult.debugColor = vec4f(vec3f(1.0) / normalizedDistance, 1.0);
+                            // traceResult.showDebug = true;
+                            return traceResult;
+                        }
 
                         traceResult.voxelReads++;
                         let occupied = getIsOccupied(ipos, lodLevel);
@@ -218,17 +225,21 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                 let direction = normalize(fragmentInputs.vPos - position);
                 let normal = fragmentInputs.vNormal;
                 let traceResult = raytraceVoxels(fragmentInputs.vPos, direction, normal);
-
-                // fragmentOutputs.color = traceResult.debugColor;
-
-                if (!traceResult.hit) {
+                
+                if (
+                    !traceResult.hit
+                     && !traceResult.showDebug
+                ) {
                     discard;
                 }
-
+                
                 fragmentOutputs.color = vec4f( traceResult.normal.xyz * 0.5 + vec3f(0.5), 1.0);
                 // fragmentOutputs.color = vec4f( vec3f(f32(traceResult.voxelReads)), 1.0);
-
                 // fragmentOutputs.color = textureSample(gridTex, gridTexSampler, fragmentInputs.vUV) * volume.maxLod;
+                
+                if (traceResult.showDebug) {
+                    fragmentOutputs.color = traceResult.debugColor;
+                }
                 
             }
         `

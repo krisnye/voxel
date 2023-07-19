@@ -11,8 +11,8 @@ import { groupNodes } from "../babylonjs/BabylonUtils"
 export default function voxelChunkNode( name: string, material: Material, camera: Camera, scene: Scene ) {
 
     // Mesh used to draw voxels when camera is outside the volume.
-    // const voxelBoundingMesh = MeshBuilder.CreateBox( "VoxelBoundingBox", { size: 1.000001 } )
-    const voxelBoundingMesh = MeshBuilder.CreateBox( "VoxelBoundingBox", { size: 1.2 } )
+    const voxelBoundingMesh = MeshBuilder.CreateBox( "VoxelBoundingBox", { size: 1.000001 } )
+    // const voxelBoundingMesh = MeshBuilder.CreateBox( "VoxelBoundingBox", { size: 1.2 } )
     // const voxelBoundingMesh = MeshBuilder.CreateBox( "VoxelBoundingBox", { width: 10, height: 1, depth: 10 } )
     voxelBoundingMesh.material = material
     voxelBoundingMesh.showBoundingBox = true

@@ -41,7 +41,6 @@ export default function VoxelTestScene() {
             fragDefinitions: VoxelOctree.wgsl_sampleOctree( "octreeTex" ),
             isOpaque: "return sampleOctree_octreeTex(pos, level);",
             resolution: new Vector3( sceneOctree.width, sceneOctree.height, sceneOctree.depth ),
-            // isOpaque: "return textureLoad(voxelOctreeTexture, pos, level).x != 0u;",
             textures: {
                 octreeTex: { type: "u32", dimension: "3d", sampler: false, value: voxelOctreeTexture }
             }
