@@ -233,14 +233,15 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                     discard;
                 }
                 
-                fragmentOutputs.color = vec4f( traceResult.normal.xyz * 0.5 + vec3f(0.5), 1.0);
-                // fragmentOutputs.color = vec4f( vec3f(f32(traceResult.voxelReads)), 1.0);
-                // fragmentOutputs.color = textureSample(gridTex, gridTexSampler, fragmentInputs.vUV) * volume.maxLod;
-                
                 if (traceResult.showDebug) {
                     fragmentOutputs.color = traceResult.debugColor;
+                } else {
+                    fragmentOutputs.color = vec4f( traceResult.normal.xyz * 0.5 + vec3f(0.5), 1.0);
+                    // fragmentOutputs.color = vec4f( vec3f(f32(traceResult.voxelReads)), 1.0);
                 }
-                
+
+                let clipPos = scene.viewProjection * vec4f(traceResult.position.xyz, 1.0);
+                fragmentOutputs.fragDepth = clipPos.z / clipPos.w;
             }
         `
         },
