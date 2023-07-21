@@ -21,32 +21,17 @@ export default function VoxelTestScene() {
 
         const sceneOctree = createSceneOctree( scene )
         const voxelOctreeTexture = sceneOctree.buildTexture( scene )
-        // const voxelMaterialIns = voxelMaterial( scene, {
-        //     fragDefinitions: VoxelOctree.glsl_sampleOctree,
-        //     getIsOccupied: `
-        //         return sampleOctree(voxelOctreeTexture, pos, lod);
-        //     `,
-        //     getDiffuse: `
-        //         vec3 normal = traceResult.normal.xyz;
-        //         return (normal + vec3(1.0)) / 2.0;
-        //     `,
-        //     maxLod: voxelOctreeTexture.metadata.lodLevels - 1,
-        //     resolution: new Vector3( sceneOctree.width, sceneOctree.height, sceneOctree.depth ),
-        //     textures: {
-        //         voxelOctreeTexture: { type: "lowp usampler3D", value: voxelOctreeTexture }
-        //     },
-        // } )
-
         const voxelMaterialIns = voxelMaterialWebGPU( "VoxelMaterial", {
             fragDefinitions: VoxelOctree.wgsl_sampleOctree( "octreeTex" ),
             isOpaque: "return sampleOctree_octreeTex(pos, level);",
+            maxLod: voxelOctreeTexture.metadata.lodLevels - 1,
             resolution: new Vector3( sceneOctree.width, sceneOctree.height, sceneOctree.depth ),
             textures: {
                 octreeTex: { type: "u32", dimension: "3d", sampler: false, value: voxelOctreeTexture }
             }
         }, scene )
 
-        // camera.speed *= 128 / sceneOctree.width
+        camera.speed *= 128 / sceneOctree.width
 
         let chunkNodes = [] as TransformNode[]
         const widthInChunks = 1
@@ -83,9 +68,9 @@ export default function VoxelTestScene() {
 }
 
 function createSceneOctree( scene: Scene ) {
-    const width = 32
-    const height = 32
-    const depth = 32
+    const width = 1024
+    const height = 256
+    const depth = 1024
 
     const data = new Uint8ClampedArray( width * height * depth )
 
@@ -93,9 +78,9 @@ function createSceneOctree( scene: Scene ) {
     function calcHeight( x: number, z: number ) {
         let i = x + width * z
         if ( heightMap[ i ] == 0 ) {
-            let xn = x / width
-            let zn = z / depth
-            let freq = Math.PI * 2
+            let xn = ( x + .5 ) / width
+            let zn = ( z + .5 ) / depth
+            let freq = Math.PI * 2 * 1.5
             let h = Math.sin( xn * freq ) * Math.sin( zn * freq )
             heightMap[ i ] = .25 + .75 * h
         }

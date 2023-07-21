@@ -13,15 +13,14 @@ export default function voxelChunkNode( name: string, material: Material, camera
     // Mesh used to draw voxels when camera is outside the volume.
     const voxelBoundingMesh = MeshBuilder.CreateBox( "VoxelBoundingBox", { size: 1.000001 } )
     // const voxelBoundingMesh = MeshBuilder.CreateBox( "VoxelBoundingBox", { size: 1.2 } )
-    // const voxelBoundingMesh = MeshBuilder.CreateBox( "VoxelBoundingBox", { width: 10, height: 1, depth: 10 } )
     voxelBoundingMesh.material = material
-    voxelBoundingMesh.showBoundingBox = true
+    // voxelBoundingMesh.showBoundingBox = true
 
     // Mesh used to draw voxels when camera is inside the volume.
     const invertedVoxelMeshOptions = { size: camera.minZ * 3, sideOrientation: Material.CounterClockWiseSideOrientation }
     const invertedVoxelMesh = MeshBuilder.CreateBox( "InvertedVoxelMesh", invertedVoxelMeshOptions )
     invertedVoxelMesh.material = material
-    invertedVoxelMesh.showBoundingBox = true
+    // invertedVoxelMesh.showBoundingBox = true
 
     const group = groupNodes( name, voxelBoundingMesh, invertedVoxelMesh )
 

@@ -70,7 +70,7 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
 
             struct Volume {
                 resolution: vec3f,
-                maxLod: f32
+                maxLod: u32
             }
             var<uniform> volume: Volume;
             struct TexelTransforms {
@@ -150,14 +150,12 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                 // Step to the edge of the bounding box, or exit if we don't hit it.
                 let intersectTime = intersectAABB( pos, direction, vec3(0.0), volume.resolution );
                 let nearTime = intersectTime.x;
-                if (intersectTime.x > intersectTime.y) { return traceResult; }
-                if (nearTime > 1.0) {
-                    // pos += direction * (nearTime - .0001);
-                    pos += direction * (nearTime - 0.25);
-                }
+                if (intersectTime.x > intersectTime.y) {  return traceResult; }
+                if (nearTime > 1.0) { pos += direction * (nearTime - .0001); }
 
                 var ipos = vec3i(floor(pos));
-                var lodLevel = u32(volume.maxLod);
+                var lodLevel = volume.maxLod;
+                var consecutiveEmpties = 0u;
                 
                 // Exit early if we start in a voxel.
                 if (getIsOccupied(ipos, 0u)) {
@@ -167,9 +165,12 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                     return traceResult;
                 }
 
+                // Make sure we pick a lod level that isn't occupied.
+                while (lodLevel > 0u && getIsOccupied(ipos, lodLevel)) { lodLevel--; }
+
                 for (var stepIter = 0u; stepIter < 256; stepIter++) {
                     
-                    let stepSize = 1.0;
+                    let stepSize = f32(1 << lodLevel);
                     let step = direction * stepSize;
 
                     let cellMin = floor(pos / stepSize) * stepSize;
@@ -193,17 +194,30 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                             ipos.z < -1 || ipos.z > iresolution.z;
 
                         
-                        if (outOfBounds) {
-                            // let normalizedDistance = length(pos - startPos) / resMax;
-                            // traceResult.debugColor = vec4f(vec3f(1.0) / normalizedDistance, 1.0);
-                            // traceResult.showDebug = true;
-                            return traceResult;
-                        }
+                        if (outOfBounds) { return traceResult; }
 
                         traceResult.voxelReads++;
                         let occupied = getIsOccupied(ipos, lodLevel);
                         if (!occupied) {
+                            consecutiveEmpties++;
+                            if (consecutiveEmpties > 4u && lodLevel + 1u <= volume.maxLod) {
+                                traceResult.voxelReads++;
+                                if (!getIsOccupied(ipos, lodLevel + 1u)) {
+                                    lodLevel++;
+                                } else {
+                                    consecutiveEmpties = 0u;
+                                }
+                            }
                             continue;
+                        }
+
+                        if (lodLevel > 0u) {
+                            lodLevel--;
+                            // Even if we're crossing a whole octree-cell, going 75% of the way should
+                            //put us in the middle of the child cell adjacent to the obstacle.
+                            pos = previousPos + step * dt * .75;
+                            ipos = vec3i(floor(pos));
+                            break;   
                         }
 
                         traceResult.hit = true;
@@ -268,7 +282,7 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
     // We may want to generate these UBO descriptions and WGSL structs from a single description.
     volumeUBO.addVector3( "resolution", resolution )
     volumeUBO.addUniform( "maxLod", 1 )
-    volumeUBO.updateFloat( "maxLod", maxLod )
+    volumeUBO.updateUInt( "maxLod", maxLod )
     volumeUBO.update()
     material.setUniformBuffer( "volume", volumeUBO )
     //
