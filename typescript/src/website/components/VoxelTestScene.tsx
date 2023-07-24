@@ -21,6 +21,10 @@ export default function VoxelTestScene() {
 
         const sceneOctree = createSceneOctree( scene )
         const voxelOctreeTexture = sceneOctree.buildTexture( scene )
+
+
+        camera.speed *= 128 / sceneOctree.width
+
         const voxelMaterialIns = voxelMaterialWebGPU( "VoxelMaterial", {
             fragDefinitions: VoxelOctree.wgsl_sampleOctree( "octreeTex" ),
             isOpaque: "return sampleOctree_octreeTex(pos, level);",
@@ -31,23 +35,35 @@ export default function VoxelTestScene() {
             }
         }, scene )
 
-        camera.speed *= 128 / sceneOctree.width
-
         let chunkNodes = [] as TransformNode[]
         const widthInChunks = 1
         const radiusInChunks = widthInChunks / 2
         for ( let i = 0; i < widthInChunks; i++ ) {
             for ( let j = 0; j < widthInChunks; j++ ) {
+
+
                 let node = voxelChunkNode( `ChunkNode${ i }`, voxelMaterialIns, camera, scene )
                 chunkNodes.push( node )
                 node.position.addInPlaceFromFloats( j - radiusInChunks + .5, .5, i - radiusInChunks + .5 )
                 node.metadata = { i, j }
+
             }
         }
 
         // new AxesViewer( scene )
 
         scene.onBeforeRenderObservable.add( () => {
+
+            // for ( let chunk of chunkNodes ) {
+            //     let { position, metadata } = chunk
+            //     let { i, j } = metadata
+            //     let phase = Math.sin( i - .5 ) * Math.sin( j - .5 ) * Math.PI * 2
+            //     let t = performance.now() / 1000
+            //     let freq = Math.PI * 2 / 5
+            //     let amp = .25
+            //     position.y = Math.sin( t * freq + phase ) * amp
+            // }
+
             const fpsCounter = document.getElementById( "fpsCounter" )
             if ( fpsCounter )
                 fpsCounter.innerText = `${ engine.getFps().toFixed( 2 ) } FPS`
@@ -69,8 +85,8 @@ export default function VoxelTestScene() {
 
 function createSceneOctree( scene: Scene ) {
     const width = 1024
-    const height = 256
-    const depth = 1024
+    const height = width / 4
+    const depth = width
 
     const data = new Uint8ClampedArray( width * height * depth )
 
@@ -80,7 +96,7 @@ function createSceneOctree( scene: Scene ) {
         if ( heightMap[ i ] == 0 ) {
             let xn = ( x + .5 ) / width
             let zn = ( z + .5 ) / depth
-            let freq = Math.PI * 2 * 1.5
+            let freq = Math.PI * 2 * 5 // 1.5
             let h = Math.sin( xn * freq ) * Math.sin( zn * freq )
             heightMap[ i ] = .25 + .75 * h
         }

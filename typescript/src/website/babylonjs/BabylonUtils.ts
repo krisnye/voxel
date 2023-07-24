@@ -1,4 +1,4 @@
-import Babylon, { Scene, Vector3, DirectionalLight, Color3, FreeCamera, HemisphericLight, TransformNode, Node, InternalTexture, Texture, Constants, WebGPUEngine } from "@babylonjs/core"
+import Babylon, { Scene, Vector3, DirectionalLight, Color3, FreeCamera, HemisphericLight, TransformNode, Node, InternalTexture, Texture, Constants, WebGPUEngine, BoundingBox } from "@babylonjs/core"
 import { MouseButtons } from "../utils/MouseButtons"
 import { WebGPUHardwareTexture } from "@babylonjs/core/Engines/WebGPU/webgpuHardwareTexture"
 
@@ -68,9 +68,25 @@ export function addWASDControls( cam: FreeCamera ) {
     cam.keysDownward.push( 16 /*Left Shift*/ )
 }
 
+/**
+ * Wraps a WebGPU texture in a BabylonJS `Texture`.
+ * In its current form, this will not update all information like format and dimension.
+ * @param engine 
+ * @param scene The scene that will own the texture.
+ * @param gpuTexture 
+ * @returns 
+ */
 export function wrapWebGPUTexture( engine: WebGPUEngine, scene: Scene, gpuTexture: GPUTexture ) {
     const internalTexture = engine.wrapWebGPUTexture( gpuTexture )
     const hwTexture = internalTexture._hardwareTexture as WebGPUHardwareTexture
     hwTexture.createView()
     return new Texture( null, scene, { internalTexture } )
+}
+
+export function expandBoundingBoxToRef( boundingBox: BoundingBox, by: Vector3, refBoundingBox: BoundingBox ) {
+    refBoundingBox.reConstruct(
+        boundingBox.minimum.subtractToRef( by, refBoundingBox.minimum ),
+        boundingBox.maximum.addToRef( by, refBoundingBox.maximum ),
+        boundingBox.getWorldMatrix()
+    )
 }

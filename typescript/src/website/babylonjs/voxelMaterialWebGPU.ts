@@ -46,7 +46,9 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
 
     const material = new ShaderMaterial( name, scene,
         {
-            vertexSource: /*wgsl*/ `   
+
+            vertexSource: /*wgsl*/ `
+
             #include<sceneUboDeclaration>
             #include<meshUboDeclaration>
     
@@ -64,8 +66,9 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                 vertexOutputs.vNormal = (mesh.world * vec4f(vertexInputs.normal, 0.0)).xyz;
                 vertexOutputs.vPos = (mesh.world * vec4f(vertexInputs.position, 1.0)).xyz;
                 vertexOutputs.vUV = vertexInputs.uv;
-            }    
+            }
         `,
+
             fragmentSource: /*wgsl*/ `
 
             struct Volume {
@@ -84,9 +87,6 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
             ${ textureDeclarations }
             ${ fragDefinitions }
 
-            var gridTex: texture_2d<f32>;
-            var gridTexSampler: sampler;
-    
             varying vNormal : vec3f;
             varying vPos: vec3f;
             varying vUV : vec2f;
@@ -258,12 +258,15 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                 fragmentOutputs.fragDepth = clipPos.z / clipPos.w;
             }
         `
+
+
         },
         {
             attributes: [ "position", "normal", "uv" ],
             uniformBuffers: [ "Scene", "Mesh" ],
-            shaderLanguage: ShaderLanguage.WGSL
-        }
+            shaderLanguage: ShaderLanguage.WGSL,
+        },
+        true
     )
 
     const worldToTexel = new Matrix()
@@ -273,7 +276,7 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
         .multiply( Matrix.Scaling( resolutionMax, resolutionMax, resolutionMax ) )
 
     const volumeUBO = new UniformBuffer( scene.getEngine() )
-    const texelTransformsUBO = new UniformBuffer( scene.getEngine() )
+    const texelTransformsUBO = new UniformBuffer( scene.getEngine(), undefined, true )
     scene.onDisposeObservable.add( () => {
         volumeUBO.dispose()
         texelTransformsUBO.dispose()
@@ -312,16 +315,6 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
             texSampler.samplingMode = Constants.TEXTURE_NEAREST_NEAREST
             material.setTextureSampler( `${ name }Sampler`, texSampler )
         }
-    }
-
-    { // Temporary, delete later.
-        const gridTex = new Texture( gridUrl )
-        material.setTexture( "gridTex", gridTex )
-
-        const gridTexSampler = new TextureSampler()
-        gridTexSampler.setParameters()
-        gridTexSampler.samplingMode = Constants.TEXTURE_LINEAR_LINEAR_MIPLINEAR
-        material.setTextureSampler( "gridTexSampler", gridTexSampler )
     }
 
     material.onEffectCreatedObservable.add( e => {

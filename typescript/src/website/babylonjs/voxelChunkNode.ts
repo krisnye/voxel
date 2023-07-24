@@ -2,7 +2,7 @@ import {
     Scene, MeshBuilder, Vector3, Material,
     BoundingBox, Camera, Matrix
 } from "@babylonjs/core"
-import { groupNodes } from "../babylonjs/BabylonUtils"
+import { expandBoundingBoxToRef, groupNodes } from "../babylonjs/BabylonUtils"
 
 
 /**
@@ -14,13 +14,13 @@ export default function voxelChunkNode( name: string, material: Material, camera
     const voxelBoundingMesh = MeshBuilder.CreateBox( "VoxelBoundingBox", { size: 1.000001 } )
     // const voxelBoundingMesh = MeshBuilder.CreateBox( "VoxelBoundingBox", { size: 1.2 } )
     voxelBoundingMesh.material = material
-    // voxelBoundingMesh.showBoundingBox = true
+    voxelBoundingMesh.showBoundingBox = true
 
     // Mesh used to draw voxels when camera is inside the volume.
     const invertedVoxelMeshOptions = { size: camera.minZ * 3, sideOrientation: Material.CounterClockWiseSideOrientation }
     const invertedVoxelMesh = MeshBuilder.CreateBox( "InvertedVoxelMesh", invertedVoxelMeshOptions )
     invertedVoxelMesh.material = material
-    // invertedVoxelMesh.showBoundingBox = true
+    invertedVoxelMesh.showBoundingBox = true
 
     const group = groupNodes( name, voxelBoundingMesh, invertedVoxelMesh )
 
@@ -34,11 +34,7 @@ export default function voxelChunkNode( name: string, material: Material, camera
         const boundingBox = voxelBoundingMesh.getBoundingInfo().boundingBox
         // We need to pad the bounding box because the camera might be within the near clipping distance of the bounding volume,
         // which could cause a flicker when entering the volume.
-        paddedBoundingBox.reConstruct(
-            boundingBox.minimum.subtractToRef( pad3f, paddedBoundingBox.minimum ),
-            boundingBox.maximum.addToRef( pad3f, paddedBoundingBox.maximum ),
-            boundingBox.getWorldMatrix()
-        )
+        expandBoundingBoxToRef( boundingBox, pad3f, paddedBoundingBox )
 
         const cameraInVoxelMesh = paddedBoundingBox.intersectsPoint( camera.position )
         if ( cameraInVoxelMesh ) {
