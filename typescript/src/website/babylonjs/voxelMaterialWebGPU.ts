@@ -11,6 +11,7 @@ type TextureDefs = {
 }
 
 type Options = {
+    getDiffuse?: string,
     textures?: TextureDefs,
     isOpaque?: string,
     fragDefinitions?: string,
@@ -34,6 +35,7 @@ function getTextureDeclarations( defs: TextureDefs ) {
 
 export default function voxelMaterialWebGPU( name: string, options: Options, scene: Scene ) {
     const {
+        getDiffuse = `return vec4f( traceResult.normal.xyz * 0.5 + vec3f(0.5), 1.0);`,
         textures,
         isOpaque = `return isOpaque_placeholder(pos, level);`,
         fragDefinitions = ``,
@@ -111,6 +113,10 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                 var l = length(posf - vec3f(radius - .5));
                 if (l < radius) { result = true; }
                 return result;
+            }
+
+            fn getDiffuse(traceResult: TraceResult) -> vec4f {
+                ${ getDiffuse }
             }
 
             fn getIsOccupied(pos: vec3i, level: u32) -> bool {
@@ -250,7 +256,7 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                 if (traceResult.showDebug) {
                     fragmentOutputs.color = traceResult.debugColor;
                 } else {
-                    fragmentOutputs.color = vec4f( traceResult.normal.xyz * 0.5 + vec3f(0.5), 1.0);
+                    fragmentOutputs.color = getDiffuse(traceResult);
                     // fragmentOutputs.color = vec4f( vec3f(f32(traceResult.voxelReads)), 1.0);
                 }
 
@@ -258,7 +264,6 @@ export default function voxelMaterialWebGPU( name: string, options: Options, sce
                 fragmentOutputs.fragDepth = clipPos.z / clipPos.w;
             }
         `
-
 
         },
         {

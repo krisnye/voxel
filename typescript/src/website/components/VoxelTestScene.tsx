@@ -41,7 +41,6 @@ export default function VoxelTestScene() {
         for ( let i = 0; i < widthInChunks; i++ ) {
             for ( let j = 0; j < widthInChunks; j++ ) {
 
-
                 let node = voxelChunkNode( `ChunkNode${ i }`, voxelMaterialIns, camera, scene )
                 chunkNodes.push( node )
                 node.position.addInPlaceFromFloats( j - radiusInChunks + .5, .5, i - radiusInChunks + .5 )
